@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Key Fixer</string>
+    <string name="title_activity_home">Map</string>
+    <string name="google_direction_api">AIzaSyDeWQj-U1sn2QcWDOmVpsnxHRRzHGKK7ew</string>
+    <string name="title_activity_home2">Đặt thợ sửa khóa</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_welcome">Map</string>
+</resources>

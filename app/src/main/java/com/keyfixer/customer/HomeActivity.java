@@ -16,13 +16,19 @@ import android.view.MenuItem;
 import android.location.Location;
 import android.content.pm.PackageManager;
 import android.support.v4.app.ActivityCompat;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Toast;
 import android.util.Log;
+
+import com.google.android.gms.ads.formats.NativeAd;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
@@ -37,6 +43,8 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.keyfixer.customer.Fragments.BottomSheetCustomerFragment;
+import com.keyfixer.customer.Helper.CustomInfoWindow;
 
 public class HomeActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback,
@@ -62,6 +70,10 @@ public class HomeActivity extends AppCompatActivity
     GeoFire geoFire;
     Marker mUserMarker;
 
+    private ImageView imgExpandable;
+    private BottomSheetCustomerFragment mBottomSheet;
+    private Button btnPickupRequest;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -86,7 +98,40 @@ public class HomeActivity extends AppCompatActivity
         ref = FirebaseDatabase.getInstance().getReference("Fixers");
         geoFire = new GeoFire(ref);
 
+        imgExpandable = (ImageView) findViewById(R.id.ic_showup);
+        mBottomSheet = BottomSheetCustomerFragment.newInstance("Customer bottom sheet");
+        imgExpandable.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mBottomSheet.show(getSupportFragmentManager(), mBottomSheet.getTag());
+            }
+        });
+
+        btnPickupRequest = (Button) findViewById(R.id.btn_GoiThoSuaKhoa);
+        btnPickupRequest.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                requestFixHere(FirebaseAuth.getInstance().getCurrentUser().getUid());
+            }
+        });
+
         setupLocation();
+    }
+
+    private void requestFixHere(String uid) {
+        DatabaseReference dbRequest = FirebaseDatabase.getInstance().getReference("FixRequest");
+        GeoFire mGeoFire = new GeoFire(dbRequest);
+        mGeoFire.setLocation(uid, new GeoLocation(mLastLocation.getLatitude(), mLastLocation.getLongitude()));
+
+        if (mUserMarker.isVisible())
+            mUserMarker.remove();
+        //add new marker
+        mUserMarker = mMap.addMarker(new MarkerOptions().title("Sửa ở đây").snippet("").position(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()))
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+
+        mUserMarker.showInfoWindow();
+
+        btnPickupRequest.setText("Đang tìm thợ sửa khóa cho bạn");
     }
 
     @Override
@@ -236,16 +281,18 @@ public class HomeActivity extends AppCompatActivity
         return true;
     }
 
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
         mMap = googleMap;
+        mMap.getUiSettings().setZoomControlsEnabled(true);
+        mMap.getUiSettings().setZoomGesturesEnabled(true);
+        mMap.setInfoWindowAdapter(new CustomInfoWindow(this));
+
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         mMap.setTrafficEnabled(false);
         mMap.setIndoorEnabled(false);
         mMap.setBuildingsEnabled(false);
-        mMap.getUiSettings().setZoomControlsEnabled(true);
         /*
         googleMap.addMarker(new MarkerOptions().position(new LatLng(37.7750,122.4183)).title("San Francisco"));
         googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(37.7750,122.4183), 12));

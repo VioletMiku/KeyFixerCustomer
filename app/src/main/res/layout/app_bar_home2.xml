@@ -43,7 +43,7 @@
 
                 <ImageView
                     android:layout_weight="1"
-                    android:layout_gravity="center_vertical"
+                    android:layout_gravity="center_horizontal"
                     android:src="@drawable/ic_pin_drop_black_24dp"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content" />

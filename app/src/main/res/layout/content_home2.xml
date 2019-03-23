@@ -27,16 +27,17 @@
                 android:layout_height="wrap_content">
 
                 <ImageView
-                    android:id="@+id/imgExpandfromBottom"
+                    android:id="@+id/ic_showup"
                     android:layout_alignParentRight="true"
                     android:src="@drawable/ic_showup"
-                    android:layout_width="wrap_content"
+                    android:layout_width="50dp"
                     android:layout_height="wrap_content" />
                 <Button
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textColor="@color/basePressColor"
-                    android:layout_toLeftOf="@id/imgExpandfromBottom"
+                    android:id="@+id/btn_GoiThoSuaKhoa"
+                    android:layout_toLeftOf="@id/ic_showup"
                     android:background="@drawable/btn_sign_in_background"
                     android:text="Gọi thợ sửa khóa"/>
             </RelativeLayout>

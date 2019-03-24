@@ -22,6 +22,8 @@ import android.widget.ImageView;
 import android.widget.Toast;
 import android.util.Log;
 
+import com.firebase.geofire.GeoQuery;
+import com.firebase.geofire.GeoQueryEventListener;
 import com.google.android.gms.ads.formats.NativeAd;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
@@ -33,6 +35,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.DatabaseError;
@@ -43,8 +46,13 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.database.ValueEventListener;
 import com.keyfixer.customer.Fragments.BottomSheetCustomerFragment;
 import com.keyfixer.customer.Helper.CustomInfoWindow;
+import com.keyfixer.customer.Model.User;
+
+import static com.keyfixer.customer.Common.Common.fix_request_tbl;
+import static com.keyfixer.customer.Common.Common.fixer_tbl;
 
 public class HomeActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback,
@@ -74,6 +82,12 @@ public class HomeActivity extends AppCompatActivity
     private BottomSheetCustomerFragment mBottomSheet;
     private Button btnPickupRequest;
 
+    boolean isFixerFound = false;
+    String fixerid = "";
+    int radius = 1;
+    int distance = 3;
+    private static final int LIMIT = 3;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -95,7 +109,7 @@ public class HomeActivity extends AppCompatActivity
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-        ref = FirebaseDatabase.getInstance().getReference("Fixers");
+        ref = FirebaseDatabase.getInstance().getReference(fixer_tbl);
         geoFire = new GeoFire(ref);
 
         imgExpandable = (ImageView) findViewById(R.id.ic_showup);
@@ -119,7 +133,7 @@ public class HomeActivity extends AppCompatActivity
     }
 
     private void requestFixHere(String uid) {
-        DatabaseReference dbRequest = FirebaseDatabase.getInstance().getReference("FixRequest");
+        DatabaseReference dbRequest = FirebaseDatabase.getInstance().getReference(fix_request_tbl);
         GeoFire mGeoFire = new GeoFire(dbRequest);
         mGeoFire.setLocation(uid, new GeoLocation(mLastLocation.getLatitude(), mLastLocation.getLongitude()));
 
@@ -132,6 +146,51 @@ public class HomeActivity extends AppCompatActivity
         mUserMarker.showInfoWindow();
 
         btnPickupRequest.setText("Đang tìm thợ sửa khóa cho bạn");
+        findFixer();
+    }
+
+    private void findFixer() {
+        DatabaseReference fixers = FirebaseDatabase.getInstance().getReference(fixer_tbl);
+        GeoFire gfFixer = new GeoFire(fixers);
+
+        GeoQuery geoQuery = gfFixer.queryAtLocation(new GeoLocation(mLastLocation.getLatitude(), mLastLocation.getLongitude()), radius);
+        geoQuery.removeAllListeners();
+        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key , GeoLocation location) {
+                //if found
+                if (!isFixerFound){
+                    isFixerFound = true;
+                    fixerid = key;
+                    btnPickupRequest.setText("Gọi cho thợ sửa khóa");
+                    Toast.makeText(HomeActivity.this , "Đã tìm thấy!" , Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+
+            }
+
+            @Override
+            public void onKeyMoved(String key , GeoLocation location) {
+
+            }
+
+            @Override
+            public void onGeoQueryReady() {
+                //if still not found fixer, increase distance
+                if (!isFixerFound){
+                    radius++;
+                    findFixer();
+                }
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+
+            }
+        });
     }
 
     @Override
@@ -175,26 +234,75 @@ public class HomeActivity extends AppCompatActivity
         if (mLastLocation != null){//co bug cho nay _ mlastLocation = null
             final double latitude = mLastLocation.getLatitude();
             final double longtitude = mLastLocation.getLongitude();
-            //Update to firebase
-            geoFire.setLocation(FirebaseAuth.getInstance().getCurrentUser().getUid(), new GeoLocation(latitude, longtitude), new GeoFire.CompletionListener() {
-                @Override
-                public void onComplete(String key, DatabaseError error) {
-                    //Add marker
-                    if (mUserMarker != null){
-                        mUserMarker.remove(); //remove already marker
-                    }
-                    Log.d("message","/////////////////////////////////////////////////////");
-                    mUserMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longtitude)).title("Bạn"));
-                    //Move camera to this position
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude,longtitude),15.0f));
+            //Add marker
+            if (mUserMarker != null){
+                mUserMarker.remove(); //remove already marker
+            }
+            Log.d("message","/////////////////////////////////////////////////////");
+            mUserMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longtitude)).title("Bạn"));
+            //Move camera to this position
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude,longtitude),15.0f));
+            loadAllAvailableFixer();
 
-                }
-            });
         }
         else{
             Log.d("Ối!", "Không thể xác định được vị trí của bạn");
             Toast.makeText(this, "Bạn bật GPS chưa nhỉ ?!", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void loadAllAvailableFixer() {
+        DatabaseReference fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl);
+        GeoFire gfLocation = new GeoFire(fixerLocation);
+
+        GeoQuery geoQuery = gfLocation.queryAtLocation(new GeoLocation(mLastLocation.getLatitude(), mLastLocation.getLongitude()), distance);
+        geoQuery.removeAllListeners();
+
+        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key , final GeoLocation location) {
+                //use key to get email from table Users
+                //table Users is a table contain fixer's information
+                FirebaseDatabase.getInstance().getReference(fixer_tbl).child(key).addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        User user = dataSnapshot.getValue(User.class);
+                        //add fixer to map
+                        mMap.addMarker(new MarkerOptions().position(new LatLng(location.latitude, location.longitude))
+                                                            .flat(true).title(user.getStrPhone())
+                                                            .icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+
+            }
+
+            @Override
+            public void onKeyMoved(String key , GeoLocation location) {
+
+            }
+
+            @Override
+            public void onGeoQueryReady() {
+                if (distance <= LIMIT){
+                    distance++;
+                    loadAllAvailableFixer();
+                }
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+
+            }
+        });
     }
 
     private void createLocationRequest() {
@@ -320,7 +428,7 @@ public class HomeActivity extends AppCompatActivity
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Toast.makeText(this , "Cyka blyat!" , Toast.LENGTH_SHORT).show();
+        Toast.makeText(this , "Cyka blyat! The fucking capitalism take over the internet .. take them now! ☭" , Toast.LENGTH_SHORT).show();
     }
 
     @Override

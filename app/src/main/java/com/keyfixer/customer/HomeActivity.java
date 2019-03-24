@@ -108,10 +108,10 @@ public class HomeActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-
+            /* no more use
         ref = FirebaseDatabase.getInstance().getReference(fixer_tbl);
         geoFire = new GeoFire(ref);
-
+                */
         imgExpandable = (ImageView) findViewById(R.id.ic_showup);
         mBottomSheet = BottomSheetCustomerFragment.newInstance("Customer bottom sheet");
         imgExpandable.setOnClickListener(new View.OnClickListener() {

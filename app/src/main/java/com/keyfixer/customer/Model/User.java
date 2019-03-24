@@ -3,10 +3,20 @@ package com.keyfixer.customer.Model;
 public class User {
     private String strEmail, strPassword, strPhone, strName;
 
+    @Override
+    public String toString() {
+        return "User{" +
+                "strEmail='" + strEmail + '\'' +
+                ", strPassword='" + strPassword + '\'' +
+                ", strPhone='" + strPhone + '\'' +
+                ", strName='" + strName + '\'' +
+                '}';
+    }
+
     public User() {
     }
 
-    public User(String strEmail, String strPassword, String strPhone, String strName) {
+    public User(String strEmail, String strPassword, String strName, String strPhone) {
         this.strEmail = strEmail;
         this.strPassword = strPassword;
         this.strPhone = strPhone;

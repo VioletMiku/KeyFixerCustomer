@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:layout_gravity="center_horizontal"
-    android:background="@color/wallet_highlighted_text_holo_dark"
+    android:background="#FFFFFF"
     android:padding="10dp">
 
     <LinearLayout
@@ -19,7 +19,8 @@
             android:layout_weight="1"
             android:src="@drawable/ic_person_black_24dp"
             android:layout_width="0dp"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"/>
 
         <LinearLayout
             android:orientation="vertical"
@@ -31,8 +32,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:id="@+id/txt_fixinfo"
+                android:textColor="#333333"
                 android:text="Sửa ở đây"
                 android:textStyle="bold"/>
+
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

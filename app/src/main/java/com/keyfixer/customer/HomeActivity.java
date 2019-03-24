@@ -19,6 +19,7 @@ import android.support.v4.app.ActivityCompat;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
 
@@ -51,7 +52,10 @@ import com.keyfixer.customer.Fragments.BottomSheetCustomerFragment;
 import com.keyfixer.customer.Helper.CustomInfoWindow;
 import com.keyfixer.customer.Model.User;
 
+import org.w3c.dom.Text;
+
 import static com.keyfixer.customer.Common.Common.fix_request_tbl;
+import static com.keyfixer.customer.Common.Common.fixer_inf_tbl;
 import static com.keyfixer.customer.Common.Common.fixer_tbl;
 
 public class HomeActivity extends AppCompatActivity
@@ -81,12 +85,14 @@ public class HomeActivity extends AppCompatActivity
     private ImageView imgExpandable;
     private BottomSheetCustomerFragment mBottomSheet;
     private Button btnPickupRequest;
+    private TextView txtPickupSnippet;
+    private TextView txtFixInfo;
 
     boolean isFixerFound = false;
     String fixerid = "";
     int radius = 1;
     int distance = 3;
-    private static final int LIMIT = 3;
+    private static final int LIMIT = 5;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,10 +114,12 @@ public class HomeActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-            /* no more use
-        ref = FirebaseDatabase.getInstance().getReference(fixer_tbl);
+
+        /*
+        * ref = FirebaseDatabas e.getInstance().getReference(fixer_tbl);
         geoFire = new GeoFire(ref);
-                */
+        * */
+
         imgExpandable = (ImageView) findViewById(R.id.ic_showup);
         mBottomSheet = BottomSheetCustomerFragment.newInstance("Customer bottom sheet");
         imgExpandable.setOnClickListener(new View.OnClickListener() {
@@ -260,19 +268,19 @@ public class HomeActivity extends AppCompatActivity
 
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
-            public void onKeyEntered(String key , final GeoLocation location) {
+            public void onKeyEntered(final String key , final GeoLocation location) {
                 //use key to get email from table Users
                 //table Users is a table contain fixer's information
-                FirebaseDatabase.getInstance().getReference(fixer_tbl).child(key).addListenerForSingleValueEvent(new ValueEventListener() {
+                FirebaseDatabase.getInstance().getReference(fixer_inf_tbl).child(key).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
-                        User user = dataSnapshot.getValue(User.class);
+                        User user = dataSnapshot.getValue(User.class); // user get null
+                        Log.d("Key","" + key);
                         //add fixer to map
                         mMap.addMarker(new MarkerOptions().position(new LatLng(location.latitude, location.longitude))
-                                                            .flat(true).title(user.getStrPhone())
+                                                            .flat(true).title(user.getStrName() + "\n" + "Số điện thoại: " + user.getStrPhone())
                                                             .icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
                     }
-
                     @Override
                     public void onCancelled(DatabaseError databaseError) {
 

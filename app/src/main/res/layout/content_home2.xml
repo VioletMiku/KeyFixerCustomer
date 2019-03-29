@@ -39,7 +39,7 @@
                     android:textColor="@color/basePressColor"
                     android:id="@+id/btn_GoiThoSuaKhoa"
                     android:layout_toLeftOf="@id/ic_showup"
-                    android:background="@drawable/btn_sign_in_background"
+                    android:background="@android:color/holo_blue_dark"
                     android:text="Gọi thợ sửa khóa"/>
             </RelativeLayout>
         </android.support.v7.widget.CardView>

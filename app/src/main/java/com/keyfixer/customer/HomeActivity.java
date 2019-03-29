@@ -11,9 +11,9 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.location.Location;
 import android.content.pm.PackageManager;
 import android.support.v4.app.ActivityCompat;
 import android.view.View;
@@ -25,7 +25,6 @@ import android.util.Log;
 
 import com.firebase.geofire.GeoQuery;
 import com.firebase.geofire.GeoQueryEventListener;
-import com.google.android.gms.ads.formats.NativeAd;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.firebase.geofire.GeoFire;
@@ -48,11 +47,21 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.gson.Gson;
+import com.keyfixer.customer.Common.Common;
 import com.keyfixer.customer.Fragments.BottomSheetCustomerFragment;
 import com.keyfixer.customer.Helper.CustomInfoWindow;
+import com.keyfixer.customer.Model.Notification;
+import com.keyfixer.customer.Model.FCMResponse;
+import com.keyfixer.customer.Model.Sender;
+import com.keyfixer.customer.Model.Token;
 import com.keyfixer.customer.Model.User;
+import com.keyfixer.customer.Remote.IFCMService;
 
-import org.w3c.dom.Text;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 import static com.keyfixer.customer.Common.Common.fix_request_tbl;
 import static com.keyfixer.customer.Common.Common.fixer_inf_tbl;
@@ -93,6 +102,9 @@ public class HomeActivity extends AppCompatActivity
     int radius = 1;
     int distance = 3;
     private static final int LIMIT = 5;
+    private String KEY;
+    //send alert
+    IFCMService ifcmService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,6 +117,8 @@ public class HomeActivity extends AppCompatActivity
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        ifcmService = Common.getFCMService();
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -133,11 +147,59 @@ public class HomeActivity extends AppCompatActivity
         btnPickupRequest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                requestFixHere(FirebaseAuth.getInstance().getCurrentUser().getUid());
+                if (!isFixerFound)
+                    requestFixHere(FirebaseAuth.getInstance().getCurrentUser().getUid());
+                else{
+                    sendRequestToFixer(fixerid);
+                    Log.d("Fixer id","" + fixerid);
+                }
             }
         });
 
         setupLocation();
+        UpdateFireBaseToken();
+    }
+
+    private void UpdateFireBaseToken() {
+        FirebaseDatabase db = FirebaseDatabase.getInstance();
+        DatabaseReference tokens = db.getReference(Common.token_tbl);
+        Token token = new Token(FirebaseInstanceId.getInstance().getToken());
+        tokens.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(token);
+    }
+
+    private void sendRequestToFixer(String fixerid) {
+        DatabaseReference token = FirebaseDatabase.getInstance().getReference(Common.token_tbl);
+        token.orderByKey().equalTo(fixerid).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                for (DataSnapshot postSnapshot:dataSnapshot.getChildren()){
+                    Token token1 = postSnapshot.getValue(Token.class); // get token object from database with key
+                    //make raw payload - convert latlng to json
+                    String json_lat_lng = new Gson().toJson(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()));
+                    Notification notification = new Notification("MikuRoot",json_lat_lng); // send it to fixer app and we'll deserialize it again
+                    Sender content = new Sender(notification , token1.getToken()); // send this notification to token
+                    ifcmService.sendMessage(content).enqueue(new Callback<FCMResponse>() {
+                        @Override
+                        public void onResponse(Call<FCMResponse> call , Response<FCMResponse> response) {
+                            if (response.body().success == 1)
+                                Toast.makeText(HomeActivity.this , "Đã gửi yêu cầu" , Toast.LENGTH_SHORT).show();
+                            else
+                                Toast.makeText(HomeActivity.this , "Gửi yêu cầu thất bại" , Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onFailure(Call<FCMResponse> call , Throwable t) {
+                            Log.e("ERROR",t.getMessage());
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
     }
 
     private void requestFixHere(String uid) {
@@ -280,6 +342,8 @@ public class HomeActivity extends AppCompatActivity
                         mMap.addMarker(new MarkerOptions().position(new LatLng(location.latitude, location.longitude))
                                                             .flat(true).title(user.getStrName() + "\n" + "Số điện thoại: " + user.getStrPhone())
                                                             .icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
+                        KEY = key;
+                        Log.d("key","" + KEY);
                     }
                     @Override
                     public void onCancelled(DatabaseError databaseError) {
@@ -311,6 +375,16 @@ public class HomeActivity extends AppCompatActivity
 
             }
         });
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode , KeyEvent event) {
+        if ((keyCode == KeyEvent.KEYCODE_BACK)) {
+            FirebaseDatabase.getInstance().getReference(fixer_inf_tbl).child(KEY).removeValue();
+
+            finish();
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
     private void createLocationRequest() {

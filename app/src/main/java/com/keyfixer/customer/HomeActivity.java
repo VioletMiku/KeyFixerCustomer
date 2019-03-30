@@ -105,15 +105,13 @@ public class HomeActivity extends AppCompatActivity
     private String KEY;
     //send alert
     IFCMService ifcmService;
+    //Presense system
+    DatabaseReference fixerAvailable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
-
-        mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -128,6 +126,10 @@ public class HomeActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+        mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
 
         /*
         * ref = FirebaseDatabas e.getInstance().getReference(fixer_tbl);
@@ -176,7 +178,8 @@ public class HomeActivity extends AppCompatActivity
                     Token token1 = postSnapshot.getValue(Token.class); // get token object from database with key
                     //make raw payload - convert latlng to json
                     String json_lat_lng = new Gson().toJson(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()));
-                    Notification notification = new Notification("MikuRoot",json_lat_lng); // send it to fixer app and we'll deserialize it again
+                    String user_token = FirebaseInstanceId.getInstance().getToken();
+                    Notification notification = new Notification(user_token, json_lat_lng); // send it to fixer app and we'll deserialize it again
                     Sender content = new Sender(notification , token1.getToken()); // send this notification to token
                     ifcmService.sendMessage(content).enqueue(new Callback<FCMResponse>() {
                         @Override
@@ -301,7 +304,20 @@ public class HomeActivity extends AppCompatActivity
         return;
     }
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleAPiClient);
-        if (mLastLocation != null){//co bug cho nay _ mlastLocation = null
+        if (mLastLocation != null){
+            fixerAvailable = FirebaseDatabase.getInstance().getReference(Common.fixer_tbl);
+            fixerAvailable.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    //hàm này dùng để load lại toàn bộ fixer khi bảng fixer phía database có bất kì điều gì thay đổi
+                    loadAllAvailableFixer();
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            });
             final double latitude = mLastLocation.getLatitude();
             final double longtitude = mLastLocation.getLongitude();
             //Add marker
@@ -310,7 +326,6 @@ public class HomeActivity extends AppCompatActivity
             }
             Log.d("message","/////////////////////////////////////////////////////");
             mUserMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longtitude)).title("Bạn"));
-            //Move camera to this position
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude,longtitude),15.0f));
             loadAllAvailableFixer();
 
@@ -322,6 +337,13 @@ public class HomeActivity extends AppCompatActivity
     }
 
     private void loadAllAvailableFixer() {
+
+        //gỡ bỏ toàn bộ dấu khỏi bản đồ
+        mMap.clear();
+        //thêm lại địa điểm của khách hàng
+        mMap.addMarker(new MarkerOptions().position(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())).title("Bạn"));
+
+
         DatabaseReference fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl);
         GeoFire gfLocation = new GeoFire(fixerLocation);
 

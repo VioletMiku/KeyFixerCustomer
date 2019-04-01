@@ -1,13 +1,23 @@
 package com.keyfixer.customer.Services;
 
-import android.content.Intent;
+import android.os.Looper;
 
-import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
-import com.google.gson.Gson;
-import com.keyfixer.customer.CustomerCallActivity;
+
+import android.os.Handler;
+import android.widget.Toast;
 
 public class OurFirebaseMessaging extends FirebaseMessagingService {
-
+    @Override
+    public void onMessageReceived(final RemoteMessage remoteMessage) {
+        //vì ở đây đang ở ngoài luồng của main, nên nếu muốn dùng toast thì phải dùng tới handler
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(OurFirebaseMessaging.this, "" + remoteMessage.getNotification().getBody(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
 }

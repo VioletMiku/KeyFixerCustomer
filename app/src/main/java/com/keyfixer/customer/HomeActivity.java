@@ -91,9 +91,8 @@ public class HomeActivity extends AppCompatActivity
     GeoFire geoFire;
     Marker mUserMarker;
 
-    private ImageView imgExpandable;
     private BottomSheetCustomerFragment mBottomSheet;
-    private Button btnPickupRequest;
+    private Button btnPickupRequest, btnServiceFare;
     private TextView txtPickupSnippet;
     private TextView txtFixInfo;
 
@@ -134,10 +133,9 @@ public class HomeActivity extends AppCompatActivity
         * ref = FirebaseDatabas e.getInstance().getReference(fixer_tbl);
         geoFire = new GeoFire(ref);
         * */
-
-        imgExpandable = (ImageView) findViewById(R.id.ic_showup);
+        btnServiceFare = (Button) findViewById(R.id.ic_showup);
         mBottomSheet = BottomSheetCustomerFragment.newInstance("Customer bottom sheet");
-        imgExpandable.setOnClickListener(new View.OnClickListener() {
+        btnServiceFare.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mBottomSheet.show(getSupportFragmentManager(), mBottomSheet.getTag());

@@ -28,16 +28,8 @@ public class OurFirebaseMessaging extends FirebaseMessagingService {
                     Toast.makeText(OurFirebaseMessaging.this, "" + remoteMessage.getNotification().getBody(), Toast.LENGTH_SHORT).show();
                 }
             });
-        }
-        if (remoteMessage.getNotification().getTitle().equals("Đã đến")){
+        } else if (remoteMessage.getNotification().getTitle().equals("Đã đến")){
             showArrivedNotification(remoteMessage.getNotification().getBody());
-            Handler handler = new Handler(Looper.getMainLooper());
-            handler.post(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(OurFirebaseMessaging.this, "" + remoteMessage.getNotification().getBody(), Toast.LENGTH_SHORT).show();
-                }
-            });
         }
     }
 
@@ -48,7 +40,7 @@ public class OurFirebaseMessaging extends FirebaseMessagingService {
         builder.setAutoCancel(true).setDefaults(Notification.DEFAULT_LIGHTS|Notification.DEFAULT_SOUND)
                 .setWhen(System.currentTimeMillis())
                 .setSmallIcon(R.mipmap.ic_launcher_round)
-                .setContentTitle("Thông báo từ app sửa khóa")
+                .setContentTitle("Đã đến")
                 .setContentText(body)
                 .setContentIntent(contentIntent);
         NotificationManager manager = (NotificationManager)getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);

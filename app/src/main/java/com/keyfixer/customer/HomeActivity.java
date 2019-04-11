@@ -1,6 +1,7 @@
 package com.keyfixer.customer;
 
 import android.Manifest;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.location.Location;
 import android.support.annotation.NonNull;
@@ -31,6 +32,7 @@ import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
@@ -494,7 +496,6 @@ public class HomeActivity extends AppCompatActivity
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-
         mMap = googleMap;
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.getUiSettings().setZoomGesturesEnabled(true);

@@ -1,6 +1,7 @@
 package com.keyfixer.customer;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.location.Location;
@@ -61,6 +62,7 @@ import com.keyfixer.customer.Model.Token;
 import com.keyfixer.customer.Model.User;
 import com.keyfixer.customer.Remote.IFCMService;
 
+import io.paperdb.Paper;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -143,6 +145,8 @@ public class HomeActivity extends AppCompatActivity
         });
 
         btnPickupRequest = (Button) findViewById(R.id.btn_GoiThoSuaKhoa);
+        if (Common.isFixDone)
+            btnPickupRequest.setText("Đặt thợ sửa khóa");
         btnPickupRequest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -467,10 +471,19 @@ public class HomeActivity extends AppCompatActivity
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
-            return true;
         }
 
-        return super.onOptionsItemSelected(item);
+        return true;
+    }
+
+    private void signOut() {
+        //reset remember value
+        Paper.init(this);
+        Paper.book().destroy();
+        FirebaseAuth.getInstance().signOut();
+        Intent intent = new Intent(HomeActivity.this, MainActivity.class);
+        startActivity(intent);
+        finish();
     }
 
     @SuppressWarnings("StatementWithEmptyBody")
@@ -479,18 +492,8 @@ public class HomeActivity extends AppCompatActivity
         // Handle navigation view item clicks here.
         int id = item.getItemId();
 
-        if (id == R.id.nav_camera) {
-            // Handle the camera action
-        } else if (id == R.id.nav_gallery) {
-
-        } else if (id == R.id.nav_slideshow) {
-
-        } else if (id == R.id.nav_manage) {
-
-        } else if (id == R.id.nav_share) {
-
-        } else if (id == R.id.nav_send) {
-
+        if (id == R.id.nav_signout) {
+            signOut();
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);

@@ -1,5 +1,6 @@
 package com.keyfixer.customer.Common;
 
+import com.keyfixer.customer.Model.User;
 import com.keyfixer.customer.Remote.FCMClient;
 import com.keyfixer.customer.Remote.IFCMService;
 import com.keyfixer.customer.Remote.IGoogleAPI;
@@ -8,6 +9,10 @@ import com.keyfixer.customer.Remote.RetrofitClient;
 public class Common {
     public static boolean isFixerFound = false;
     public static String fixerid = "";
+    public static boolean isFixDone = false;
+    public static final String user_field = "customer_username";
+    public static final String pwd_field = "customer_password";
+    public static User currentUser;
     public static final String fixer_tbl = "Fixers";
     public static final String fixer_inf_tbl = "Users";
     public static final String customer_tbl = "Customers";

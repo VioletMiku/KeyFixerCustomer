@@ -114,6 +114,7 @@ public class RateActivity extends AppCompatActivity implements View.OnClickListe
                                     public void onComplete(@NonNull Task<Void> task) {
                                         alertDialog.dismiss();
                                         Toast.makeText(RateActivity.this , "Cảm ơn đã đánh giá!" , Toast.LENGTH_SHORT).show();
+                                        Common.isFixDone = true;
                                         finish();
                                     }
                                 })

@@ -26,7 +26,7 @@ public class PlashScreen extends AppCompatActivity {
             public void run(){
                 try{
                     sleep(1500);
-                    Intent intent = new Intent(PlashScreen.this, MainActivity.class);
+                    Intent intent = new Intent(PlashScreen.this, HomeActivity.class);
                     startActivity(intent);
                     finish();
                 } catch (InterruptedException e) {

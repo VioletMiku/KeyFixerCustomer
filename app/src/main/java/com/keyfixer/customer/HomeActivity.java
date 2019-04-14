@@ -1,6 +1,7 @@
 package com.keyfixer.customer;
 
 import android.Manifest;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.location.Location;
 import android.support.annotation.NonNull;
@@ -31,6 +32,7 @@ import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
@@ -91,14 +93,11 @@ public class HomeActivity extends AppCompatActivity
     GeoFire geoFire;
     Marker mUserMarker;
 
-    private ImageView imgExpandable;
     private BottomSheetCustomerFragment mBottomSheet;
-    private Button btnPickupRequest;
+    private Button btnPickupRequest, btnServiceFare;
     private TextView txtPickupSnippet;
     private TextView txtFixInfo;
 
-    boolean isFixerFound = false;
-    String fixerid = "";
     int radius = 1;
     int distance = 3;
     private static final int LIMIT = 5;
@@ -134,10 +133,9 @@ public class HomeActivity extends AppCompatActivity
         * ref = FirebaseDatabas e.getInstance().getReference(fixer_tbl);
         geoFire = new GeoFire(ref);
         * */
-
-        imgExpandable = (ImageView) findViewById(R.id.ic_showup);
+        btnServiceFare = (Button) findViewById(R.id.ic_showup);
         mBottomSheet = BottomSheetCustomerFragment.newInstance("Customer bottom sheet");
-        imgExpandable.setOnClickListener(new View.OnClickListener() {
+        btnServiceFare.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mBottomSheet.show(getSupportFragmentManager(), mBottomSheet.getTag());
@@ -148,11 +146,11 @@ public class HomeActivity extends AppCompatActivity
         btnPickupRequest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!isFixerFound)
+                if (!Common.isFixerFound)
                     requestFixHere(FirebaseAuth.getInstance().getCurrentUser().getUid());
                 else{
-                    sendRequestToFixer(fixerid);
-                    Log.d("Fixer id","" + fixerid);
+                    sendRequestToFixer(Common.fixerid);
+                    Log.d("Fixer id","" + Common.fixerid);
                 }
             }
         });
@@ -227,15 +225,15 @@ public class HomeActivity extends AppCompatActivity
         DatabaseReference fixers = FirebaseDatabase.getInstance().getReference(fixer_tbl);
         GeoFire gfFixer = new GeoFire(fixers);
 
-        GeoQuery geoQuery = gfFixer.queryAtLocation(new GeoLocation(mLastLocation.getLatitude(), mLastLocation.getLongitude()), radius);
+        final GeoQuery geoQuery = gfFixer.queryAtLocation(new GeoLocation(mLastLocation.getLatitude(), mLastLocation.getLongitude()), radius);
         geoQuery.removeAllListeners();
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
             public void onKeyEntered(String key , GeoLocation location) {
                 //if found
-                if (!isFixerFound){
-                    isFixerFound = true;
-                    fixerid = key;
+                if (!Common.isFixerFound){
+                    Common.isFixerFound = true;
+                    Common.fixerid = key;
                     btnPickupRequest.setText("Gọi cho thợ sửa khóa");
                     Toast.makeText(HomeActivity.this , "Đã tìm thấy!" , Toast.LENGTH_SHORT).show();
                 }
@@ -254,9 +252,15 @@ public class HomeActivity extends AppCompatActivity
             @Override
             public void onGeoQueryReady() {
                 //if still not found fixer, increase distance
-                if (!isFixerFound){
+                if (!Common.isFixerFound){
                     radius++;
                     findFixer();
+                } else{
+                    if (!Common.isFixerFound){
+                        Toast.makeText(HomeActivity.this , "Không có thợ sửa khóa nào ở gần bạn" , Toast.LENGTH_SHORT).show();
+                        btnPickupRequest.setText("Đặt thợ sửa khóa");
+                        geoQuery.removeAllListeners();
+                    }
                 }
             }
 
@@ -496,7 +500,6 @@ public class HomeActivity extends AppCompatActivity
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-
         mMap = googleMap;
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.getUiSettings().setZoomGesturesEnabled(true);

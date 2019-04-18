@@ -1,26 +1,18 @@
 package com.keyfixer.customer.Model;
 
 public class User {
-    private String strEmail, strPassword, strPhone, strName;
-
-    @Override
-    public String toString() {
-        return "User{" +
-                "strEmail='" + strEmail + '\'' +
-                ", strPassword='" + strPassword + '\'' +
-                ", strPhone='" + strPhone + '\'' +
-                ", strName='" + strName + '\'' +
-                '}';
-    }
+    private String strEmail, strPassword, strPhone, strName, avatarUrl, rates;
 
     public User() {
     }
 
-    public User(String strEmail, String strPassword, String strName, String strPhone) {
+    public User(String strEmail , String strPassword , String strPhone , String strName , String avatarUrl , String rates) {
         this.strEmail = strEmail;
         this.strPassword = strPassword;
         this.strPhone = strPhone;
         this.strName = strName;
+        this.avatarUrl = avatarUrl;
+        this.rates = rates;
     }
 
     public String getStrEmail() {
@@ -53,5 +45,33 @@ public class User {
 
     public void setStrName(String strName) {
         this.strName = strName;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public String getRates() {
+        return rates;
+    }
+
+    public void setRates(String rates) {
+        this.rates = rates;
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "strEmail='" + strEmail + '\'' +
+                ", strPassword='" + strPassword + '\'' +
+                ", strPhone='" + strPhone + '\'' +
+                ", strName='" + strName + '\'' +
+                ", avatarUrl='" + avatarUrl + '\'' +
+                ", rates='" + rates + '\'' +
+                '}';
     }
 }

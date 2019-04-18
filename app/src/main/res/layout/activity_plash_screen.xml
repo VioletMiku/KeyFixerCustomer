@@ -4,13 +4,16 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".PlashScreenActivity"
-    android:orientation="vertical"
-    android:background="@mipmap/woodbench_in_dark_room">
+    android:background="@color/black"
+    tools:context=".PlashScreen"
+    android:orientation="vertical">
+
     <LinearLayout
         android:id="@+id/number11"
         android:layout_width="match_parent"
-        android:layout_height="400dp"
+        android:layout_height="match_parent"
+        android:layout_margin="10dp"
+        android:background="@mipmap/woodbench_in_dark_room"
         android:orientation="vertical">
         <TextView
             android:layout_width="wrap_content"
@@ -31,5 +34,4 @@
             android:textSize="30sp"
             android:layout_marginTop="65dp"/>
     </LinearLayout>
-
 </LinearLayout>

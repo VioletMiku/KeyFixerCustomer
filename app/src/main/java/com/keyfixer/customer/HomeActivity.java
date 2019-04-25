@@ -282,13 +282,16 @@ public class HomeActivity extends AppCompatActivity
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.customer_marker)));
 
         mUserMarker.showInfoWindow();
-        //animation
-        mapRipple = new MapRipple(mMap, new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), this);
-        mapRipple.withNumberOfRipples(4);
-        mapRipple.withDistance(500);
-        mapRipple.withRippleDuration(1000);
-        mapRipple.withTransparency(0.5f);
-        mapRipple.startRippleMapAnimation();
+        boolean tabletSize = getResources().getBoolean(R.bool.isTablet);
+        if (tabletSize){
+            //animation
+            mapRipple = new MapRipple(mMap, new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), this);
+            mapRipple.withNumberOfRipples(4);
+            mapRipple.withDistance(500);
+            mapRipple.withRippleDuration(1000);
+            mapRipple.withTransparency(0.5f);
+            mapRipple.startRippleMapAnimation();
+        }
         btnPickupRequest.setText("Đang tìm thợ sửa khóa cho bạn");
         findFixer();
     }

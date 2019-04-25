@@ -32,6 +32,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
 
+import com.arsy.maps_library.MapRipple;
 import com.facebook.accountkit.Account;
 import com.facebook.accountkit.AccountKit;
 import com.facebook.accountkit.AccountKitCallback;
@@ -141,6 +142,9 @@ public class HomeActivity extends AppCompatActivity
     boolean isFix_car_service = true;
     boolean isFix_motorbike_service = true;
 
+    //map animation
+    MapRipple mapRipple;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -192,8 +196,9 @@ public class HomeActivity extends AppCompatActivity
 
         btnPickupRequest = (Button) findViewById(R.id.btn_GoiThoSuaKhoa);
 
-        if (Common.isFixDone)
+        if (Common.isFixDone || Common.isExitFromCallFixerUI) {
             btnPickupRequest.setText("Đặt thợ sửa khóa");
+        }
 
         btnPickupRequest.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -274,10 +279,16 @@ public class HomeActivity extends AppCompatActivity
             mUserMarker.remove();
         //add new marker
         mUserMarker = mMap.addMarker(new MarkerOptions().title("Sửa ở đây").snippet("").position(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()))
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.customer_marker)));
 
         mUserMarker.showInfoWindow();
-
+        //animation
+        mapRipple = new MapRipple(mMap, new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), this);
+        mapRipple.withNumberOfRipples(4);
+        mapRipple.withDistance(500);
+        mapRipple.withRippleDuration(1000);
+        mapRipple.withTransparency(0.5f);
+        mapRipple.startRippleMapAnimation();
         btnPickupRequest.setText("Đang tìm thợ sửa khóa cho bạn");
         findFixer();
     }

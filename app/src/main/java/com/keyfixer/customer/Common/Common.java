@@ -29,6 +29,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class Common {
+    public static boolean isExitFromCallFixerUI = false;
     public static boolean isFixerFound = false;
     public static String fixerid = "";
     public static boolean isFixDone = false;

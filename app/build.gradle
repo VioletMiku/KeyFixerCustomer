@@ -31,6 +31,7 @@ dependencies {
     implementation 'com.github.glomadrian:MaterialAnimatedSwitch:1.1@aar'
     implementation 'com.github.d-max:spots-dialog:0.7@aar'
     implementation 'com.github.rey5137:material:1.2.4'
+    implementation 'com.github.aarsy.googlemapsanimations:googlemapsanimations:1.0.5'
     implementation 'com.android.support:multidex:1.0.1'
     //noinspection GradleCompatible
     implementation 'com.android.support:appcompat-v7:26.+'

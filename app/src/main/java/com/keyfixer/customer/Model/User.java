@@ -1,18 +1,19 @@
 package com.keyfixer.customer.Model;
 
 public class User {
-    private String strEmail, strPassword, strPhone, strName, avatarUrl, rates;
+    private String strEmail, strPassword, strPhone, strName, avatarUrl, rates, serviceType;
 
     public User() {
     }
 
-    public User(String strEmail , String strPassword , String strPhone , String strName , String avatarUrl , String rates) {
+    public User(String strEmail , String strPassword , String strPhone , String strName , String avatarUrl , String rates , String serviceType) {
         this.strEmail = strEmail;
         this.strPassword = strPassword;
         this.strPhone = strPhone;
         this.strName = strName;
         this.avatarUrl = avatarUrl;
         this.rates = rates;
+        this.serviceType = serviceType;
     }
 
     public String getStrEmail() {
@@ -63,6 +64,14 @@ public class User {
         this.rates = rates;
     }
 
+    public String getServiceType() {
+        return serviceType;
+    }
+
+    public void setServiceType(String serviceType) {
+        this.serviceType = serviceType;
+    }
+
     @Override
     public String toString() {
         return "User{" +
@@ -72,6 +81,7 @@ public class User {
                 ", strName='" + strName + '\'' +
                 ", avatarUrl='" + avatarUrl + '\'' +
                 ", rates='" + rates + '\'' +
+                ", serviceType='" + serviceType + '\'' +
                 '}';
     }
 }

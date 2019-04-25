@@ -30,19 +30,24 @@ public class OurFirebaseMessaging extends FirebaseMessagingService {
             String title = data.get("title");
             final String message = data.get("message");
 
-            if (title.equals("Thông báo!")){
-                Handler handler = new Handler(Looper.getMainLooper());
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(OurFirebaseMessaging.this, message, Toast.LENGTH_SHORT).show();
-                    }
-                });
-                Common.isFixDone = true;
-            } else if (title.equals("Đã đến")){
-                showArrivedNotification(message);
-            } else if (title.equals("Sửa xong")){
-                openRateActivity(message);
+            try{
+                if (title.equals("Thông báo!")){
+                    Handler handler = new Handler(Looper.getMainLooper());
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(OurFirebaseMessaging.this, message, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    Common.isFixDone = true;
+                } else if (title.equals("Đã đến")){
+                    showArrivedNotification(message);
+                } else if (title.equals("Sửa xong")){
+                    openRateActivity(message);
+                }
+            }catch (Exception ex){
+                Log.e("Warning","Something wrong");
+                Log.e("Exception", "" + ex.getCause());
             }
         }
     }

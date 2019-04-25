@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -44,6 +45,7 @@ public class CallFixer extends AppCompatActivity implements View.OnClickListener
     }
 
     private void Initializing() {
+        Common.isExitFromCallFixerUI = false;
         ifcmService = Common.getFCMService();
         //Init view
         avatar_image = (CircleImageView) findViewById(R.id.img_avatar);
@@ -87,6 +89,16 @@ public class CallFixer extends AppCompatActivity implements View.OnClickListener
 
             }
         });
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode , KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK){
+            Common.isExitFromCallFixerUI = true;
+            Intent intent = new Intent(CallFixer.this, HomeActivity.class);
+            startActivity(intent);
+        }
+        return true;
     }
 
     @Override

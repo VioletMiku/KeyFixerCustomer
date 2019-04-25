@@ -15,6 +15,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.google.gson.Gson;
+import com.keyfixer.customer.Common.Common;
 import com.keyfixer.customer.CustomerCallActivity;
 import com.keyfixer.customer.R;
 import com.keyfixer.customer.RateActivity;
@@ -37,6 +38,7 @@ public class OurFirebaseMessaging extends FirebaseMessagingService {
                         Toast.makeText(OurFirebaseMessaging.this, message, Toast.LENGTH_SHORT).show();
                     }
                 });
+                Common.isFixDone = true;
             } else if (title.equals("Đã đến")){
                 showArrivedNotification(message);
             } else if (title.equals("Sửa xong")){

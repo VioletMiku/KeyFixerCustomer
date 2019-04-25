@@ -35,6 +35,7 @@ public class Common {
     public static final String user_field = "customer_username";
     public static final String pwd_field = "customer_password";
     public static User currentUser;
+    public static String service_want_to_fix;
     public static Location mLastLocation;
     public static final String fixer_tbl = "Fixers";
     public static final String fixer_inf_tbl = "Users";

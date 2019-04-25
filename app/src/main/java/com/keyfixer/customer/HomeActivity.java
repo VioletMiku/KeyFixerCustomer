@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.location.Location;
+import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
@@ -94,7 +95,8 @@ import static com.keyfixer.customer.Common.Common.fixer_inf_tbl;
 import static com.keyfixer.customer.Common.Common.fixer_tbl;
 
 public class HomeActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback, View.OnClickListener, GoogleMap.OnInfoWindowClickListener {
+        implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback,
+        View.OnClickListener, GoogleMap.OnInfoWindowClickListener, BottomSheetCustomerFragment.ModalBottomSheet {
 
     SupportMapFragment mapFragment;
     private GoogleMap mMap;
@@ -132,6 +134,12 @@ public class HomeActivity extends AppCompatActivity
     //firebase storage
     FirebaseStorage firebaseStorage;
     StorageReference storageReference;
+
+    //service type
+    ImageView imgHome, imgCar, imgMotorbike;
+    boolean isFix_home_service = true;
+    boolean isFix_car_service = true;
+    boolean isFix_motorbike_service = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -183,38 +191,55 @@ public class HomeActivity extends AppCompatActivity
         });
 
         btnPickupRequest = (Button) findViewById(R.id.btn_GoiThoSuaKhoa);
+
         if (Common.isFixDone)
             btnPickupRequest.setText("Đặt thợ sửa khóa");
+
         btnPickupRequest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!Common.isFixerFound){
-                    AccountKit.getCurrentAccount(new AccountKitCallback<Account>() {
-                        @Override
-                        public void onSuccess(Account account) {
-                            requestFixHere(account.getId());
-                        }
 
-                        @Override
-                        public void onError(AccountKitError accountKitError) {
+                if (Common.service_want_to_fix != null && !TextUtils.isEmpty(Common.service_want_to_fix)){
+                    Log.e("is found", "is found !?  " + Common.isFixerFound);
+                    if (!Common.isFixerFound){
+                        AccountKit.getCurrentAccount(new AccountKitCallback<Account>() {
+                            @Override
+                            public void onSuccess(Account account) {
+                                requestFixHere(account.getId());
+                            }
 
-                        }
-                    });
-                }
-                else{
-                    /*Common.sendRequestToFixer(Common.fixerid, ifcmService, HomeActivity.this, Common.mLastLocation);
+                            @Override
+                            public void onError(AccountKitError accountKitError) {
+
+                            }
+                        });
+                    } else{
+                        /*Common.sendRequestToFixer(Common.fixerid, ifcmService, HomeActivity.this, Common.mLastLocation);
                     Log.d("Fixer id","" + Common.fixerid);*/
-                    Intent intent = new Intent(HomeActivity.this, CallFixer.class);
-                    intent.putExtra("fixerId", Common.fixerid);
-                    intent.putExtra("lat", Common.mLastLocation.getLatitude());
-                    intent.putExtra("lng", Common.mLastLocation.getLongitude());
-                    startActivity(intent);
+                        Intent intent = new Intent(HomeActivity.this, CallFixer.class);
+                        intent.putExtra("fixerId", Common.fixerid);
+                        intent.putExtra("lat", Common.mLastLocation.getLatitude());
+                        intent.putExtra("lng", Common.mLastLocation.getLongitude());
+                        startActivity(intent);
+                    }
+                } else{
+                    Toast.makeText(HomeActivity.this , "Vui lòng chọn dịch vụ trước" , Toast.LENGTH_SHORT).show();
                 }
             }
         });
 
         setupLocation();
         UpdateFireBaseToken();
+    }
+
+    @Override
+    public void onImageViewCLicked(boolean isFix_home_service , boolean isFix_car_service , boolean isFix_motorbike_service) {
+        this.isFix_home_service = isFix_home_service;
+        this.isFix_car_service = isFix_car_service;
+        this.isFix_motorbike_service = isFix_motorbike_service;
+
+        mMap.clear();
+        loadAllAvailableFixer(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()));
     }
 
     private void UpdateFireBaseToken() {
@@ -237,7 +262,13 @@ public class HomeActivity extends AppCompatActivity
     private void requestFixHere(String uid) {
         DatabaseReference dbRequest = FirebaseDatabase.getInstance().getReference(fix_request_tbl);
         GeoFire mGeoFire = new GeoFire(dbRequest);
-        mGeoFire.setLocation(uid, new GeoLocation(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()));
+        mGeoFire.setLocation(uid , new GeoLocation(Common.mLastLocation.getLatitude() , Common.mLastLocation.getLongitude()) ,
+                new GeoFire.CompletionListener() {
+                    @Override
+                    public void onComplete(String key , DatabaseError error) {
+
+                    }
+                });
 
         if (mUserMarker.isVisible())
             mUserMarker.remove();
@@ -252,10 +283,11 @@ public class HomeActivity extends AppCompatActivity
     }
 
     private void findFixer() {
-        DatabaseReference fixers = FirebaseDatabase.getInstance().getReference(fixer_tbl);
-        GeoFire gfFixer = new GeoFire(fixers);
 
-        final GeoQuery geoQuery = gfFixer.queryAtLocation(new GeoLocation(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), radius);
+        DatabaseReference fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child(Common.service_want_to_fix);
+        GeoFire gfLocation = new GeoFire(fixerLocation);
+        final GeoQuery geoQuery = gfLocation.queryAtLocation(new GeoLocation(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), distance);
+
         geoQuery.removeAllListeners();
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
@@ -264,6 +296,7 @@ public class HomeActivity extends AppCompatActivity
                 if (!Common.isFixerFound){
                     Common.isFixerFound = true;
                     Common.fixerid = key;
+                    Log.e("warning4", "still finding");
                     btnPickupRequest.setText("Gọi cho thợ sửa khóa");
                     Toast.makeText(HomeActivity.this , "Đã tìm thấy!" , Toast.LENGTH_SHORT).show();
                 }
@@ -352,12 +385,17 @@ public class HomeActivity extends AppCompatActivity
                 Common.mLastLocation = location;
                 if (Common.mLastLocation != null){//co bug cho nay _ mlastLocation = null
                     //presense system
-                    fixerAvailable = FirebaseDatabase.getInstance().getReference(Common.fixer_tbl);
+                    if(isFix_home_service)
+                        fixerAvailable = FirebaseDatabase.getInstance().getReference(Common.fixer_tbl).child("S ử a   k h ó a   n h à");
+                    else if (isFix_car_service)
+                        fixerAvailable = FirebaseDatabase.getInstance().getReference(Common.fixer_tbl).child("S ử a   k h ó a   x e   h ơ i");
+                    else if (isFix_motorbike_service)
+                        fixerAvailable = FirebaseDatabase.getInstance().getReference(Common.fixer_tbl).child("S ử a   k h ó a   x e   g ắ n   m á y");
                     fixerAvailable.addValueEventListener(new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             //if has any change from fixer table, we will load all fixers available
-                            loadAllAvailableFixer();
+                            loadAllAvailableFixer(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()));
                         }
 
                         @Override
@@ -376,7 +414,7 @@ public class HomeActivity extends AppCompatActivity
                     mUserMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longtitude)).title("Bạn"));
                     //Move camera to this position
                     mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude,longtitude),15.0f));
-                    loadAllAvailableFixer();
+                    loadAllAvailableFixer(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()));
 
                 } else{
                     Log.d("Ối!", "Không thể xác định được vị trí của bạn");
@@ -385,12 +423,22 @@ public class HomeActivity extends AppCompatActivity
         });
     }
 
-    private void loadAllAvailableFixer() {
+    private void loadAllAvailableFixer(final LatLng location) {
         //remove all marker, include fixer or customer
         mMap.clear();
         //after that, just add our location again
-        mMap.addMarker(new MarkerOptions().position(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude())).title("Bạn"));
-        DatabaseReference fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl);
+        mMap.addMarker(new MarkerOptions()
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.customer_marker))
+                .position(location)
+                .title("Bạn"));
+        DatabaseReference fixerLocation = null;
+        if (isFix_home_service) {
+            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   n h à");
+        } else if (isFix_car_service) {
+            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   x e   h ơ i");
+        } else if (isFix_motorbike_service) {
+            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   x e   g ắ n   m á y");
+        }
         GeoFire gfLocation = new GeoFire(fixerLocation);
 
         GeoQuery geoQuery = gfLocation.queryAtLocation(new GeoLocation(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), distance);
@@ -408,7 +456,8 @@ public class HomeActivity extends AppCompatActivity
                         Log.d("Key","" + key);
                         //add fixer to map
                         mMap.addMarker(new MarkerOptions().position(new LatLng(location.latitude, location.longitude))
-                                                            .flat(true).title("Tên thợ sửa khóa: " + user.getStrName()).snippet("ID thợ sửa khóa: " + dataSnapshot.getKey())
+                                                            .flat(true).title("Tên thợ sửa khóa: " + user.getStrName() + "\nSố điện thoại: " + user.getStrPhone())
+                                                            .snippet("ID thợ sửa khóa: " + dataSnapshot.getKey())
                                                             .icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
                         KEY = key;
                         Log.d("key","" + KEY);
@@ -434,7 +483,7 @@ public class HomeActivity extends AppCompatActivity
             public void onGeoQueryReady() {
                 if (distance <= LIMIT){
                     distance++;
-                    loadAllAvailableFixer();
+                    loadAllAvailableFixer(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()));
                 }
             }
 

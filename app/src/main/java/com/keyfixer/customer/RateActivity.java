@@ -1,6 +1,7 @@
 package com.keyfixer.customer;
 
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -71,10 +72,13 @@ public class RateActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         switch (v.getId()){
             case R.id.btn_skip:
-
+                Intent intent = new Intent(RateActivity.this, HomeActivity.class);
+                startActivity(intent);
+                Common.isFixDone = true;
                 break;
             case R.id.btn_postcomment:
                 SubmitRateDetail(Common.fixerid);
+                Common.isFixDone = true;
                 break;
         }
     }
@@ -115,6 +119,8 @@ public class RateActivity extends AppCompatActivity implements View.OnClickListe
                                         alertDialog.dismiss();
                                         Toast.makeText(RateActivity.this , "Cảm ơn đã đánh giá!" , Toast.LENGTH_SHORT).show();
                                         Common.isFixDone = true;
+                                        Intent intent = new Intent(RateActivity.this, HomeActivity.class);
+                                        startActivity(intent);
                                         finish();
                                     }
                                 })

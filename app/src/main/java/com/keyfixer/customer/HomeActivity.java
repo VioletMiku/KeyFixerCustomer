@@ -298,7 +298,7 @@ public class HomeActivity extends AppCompatActivity
 
     private void findFixer() {
 
-        DatabaseReference fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child(Common.service_want_to_fix);
+        DatabaseReference fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child(Common.service_want_to_fix).child("activated");
         GeoFire gfLocation = new GeoFire(fixerLocation);
         final GeoQuery geoQuery = gfLocation.queryAtLocation(new GeoLocation(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), distance);
 

@@ -65,6 +65,7 @@ public class Common {
                     content.put("customer", customer_token);
                     content.put("lat", String.valueOf(currentLocation.getLatitude()));
                     content.put("lng", String.valueOf(currentLocation.getLongitude()));
+                    content.put("service", service_want_to_fix);
                     DataMessage dataMessage = new DataMessage(token1.getToken(), content);
                     ifcmService.sendMessage(dataMessage).enqueue(new Callback<FCMResponse>() {
                         @Override

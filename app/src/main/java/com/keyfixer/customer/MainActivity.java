@@ -86,7 +86,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //Init view
         GetButtonControl();
 
-        //Auto login with Facebook account kit for second time
+//Auto login with Facebook account kit for second time
         if (AccountKit.getCurrentAccessToken() != null){
             //create dialog
             final AlertDialog waitingDialog = new SpotsDialog(this);

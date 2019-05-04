@@ -447,11 +447,11 @@ public class HomeActivity extends AppCompatActivity
                 .title("Bạn"));
         DatabaseReference fixerLocation = null;
         if (isFix_home_service) {
-            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   n h à");
+            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   n h à").child("activated");
         } else if (isFix_car_service) {
-            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   x e   h ơ i");
+            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   x e   h ơ i").child("activated");
         } else if (isFix_motorbike_service) {
-            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   x e   g ắ n   m á y");
+            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   x e   g ắ n   m á y").child("activated");
         }
         GeoFire gfLocation = new GeoFire(fixerLocation);
 

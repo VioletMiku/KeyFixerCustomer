@@ -1,17 +1,26 @@
 package com.keyfixer.customer;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.location.Location;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.content.pm.PackageManager;
@@ -23,23 +32,31 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
 
+import com.arsy.maps_library.MapRipple;
+import com.facebook.accountkit.Account;
+import com.facebook.accountkit.AccountKit;
+import com.facebook.accountkit.AccountKitCallback;
+import com.facebook.accountkit.AccountKitError;
 import com.firebase.geofire.GeoQuery;
 import com.firebase.geofire.GeoQueryEventListener;
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.DatabaseError;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -48,17 +65,28 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.OnProgressListener;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 import com.google.gson.Gson;
 import com.keyfixer.customer.Common.Common;
 import com.keyfixer.customer.Fragments.BottomSheetCustomerFragment;
 import com.keyfixer.customer.Helper.CustomInfoWindow;
+import com.keyfixer.customer.Model.DataMessage;
 import com.keyfixer.customer.Model.FCMResponse;
-import com.keyfixer.customer.Model.Notification;
-import com.keyfixer.customer.Model.Sender;
 import com.keyfixer.customer.Model.Token;
 import com.keyfixer.customer.Model.User;
 import com.keyfixer.customer.Remote.IFCMService;
+import com.rengwuxian.materialedittext.MaterialEditText;
+import com.squareup.picasso.Picasso;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+import de.hdodenhof.circleimageview.CircleImageView;
+import dmax.dialog.SpotsDialog;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -69,12 +97,12 @@ import static com.keyfixer.customer.Common.Common.fixer_tbl;
 
 public class HomeActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback,
-        GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener,
-        LocationListener {
+        View.OnClickListener, GoogleMap.OnInfoWindowClickListener, BottomSheetCustomerFragment.ModalBottomSheet {
 
     SupportMapFragment mapFragment;
     private GoogleMap mMap;
+    FusedLocationProviderClient fusedLocationProviderClient;
+    LocationCallback locationCallback;
     //play services
     private static final int MY_PERMISSION_REQUEST_CODE = 7192;
     private static final int PLAY_SERVICE_RES_REQUEST = 300193;
@@ -91,14 +119,11 @@ public class HomeActivity extends AppCompatActivity
     GeoFire geoFire;
     Marker mUserMarker;
 
-    private ImageView imgExpandable;
     private BottomSheetCustomerFragment mBottomSheet;
-    private Button btnPickupRequest;
+    private Button btnPickupRequest, btnServiceFare;
     private TextView txtPickupSnippet;
     private TextView txtFixInfo;
 
-    boolean isFixerFound = false;
-    String fixerid = "";
     int radius = 1;
     int distance = 3;
     private static final int LIMIT = 5;
@@ -106,6 +131,19 @@ public class HomeActivity extends AppCompatActivity
     //send alert
     IFCMService ifcmService;
     DatabaseReference fixerAvailable;
+
+    //firebase storage
+    FirebaseStorage firebaseStorage;
+    StorageReference storageReference;
+
+    //service type
+    ImageView imgHome, imgCar, imgMotorbike;
+    boolean isFix_home_service = true;
+    boolean isFix_car_service = true;
+    boolean isFix_motorbike_service = true;
+
+    //map animation
+    MapRipple mapRipple;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,7 +157,12 @@ public class HomeActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        //init firebase storage
+        firebaseStorage = FirebaseStorage.getInstance();
+        storageReference = firebaseStorage.getReference();
+
         ifcmService = Common.getFCMService();
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -130,14 +173,21 @@ public class HomeActivity extends AppCompatActivity
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
+        View navigationHeaderView = navigationView.getHeaderView(0);
+        TextView txt_Customer_Name = (TextView) navigationHeaderView.findViewById(R.id.txt_CustomerName);
+        CircleImageView imgAvatar = (CircleImageView) navigationHeaderView.findViewById(R.id.imgAvatar);
+
+        txt_Customer_Name.setText(Common.currentUser.getStrName());
+        if (Common.currentUser.getAvatarUrl() != null && !TextUtils.isEmpty(Common.currentUser.getAvatarUrl()))
+            Picasso.with(this).load(Common.currentUser.getAvatarUrl()).into(imgAvatar);
+
         /*
         * ref = FirebaseDatabas e.getInstance().getReference(fixer_tbl);
         geoFire = new GeoFire(ref);
         * */
-
-        imgExpandable = (ImageView) findViewById(R.id.ic_showup);
+        btnServiceFare = (Button) findViewById(R.id.ic_showup);
         mBottomSheet = BottomSheetCustomerFragment.newInstance("Customer bottom sheet");
-        imgExpandable.setOnClickListener(new View.OnClickListener() {
+        btnServiceFare.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mBottomSheet.show(getSupportFragmentManager(), mBottomSheet.getTag());
@@ -145,14 +195,40 @@ public class HomeActivity extends AppCompatActivity
         });
 
         btnPickupRequest = (Button) findViewById(R.id.btn_GoiThoSuaKhoa);
+
+        if (Common.isFixDone || Common.isExitFromCallFixerUI) {
+            btnPickupRequest.setText("Đặt thợ sửa khóa");
+        }
+
         btnPickupRequest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!isFixerFound)
-                    requestFixHere(FirebaseAuth.getInstance().getCurrentUser().getUid());
-                else{
-                    sendRequestToFixer(fixerid);
-                    Log.d("Fixer id","" + fixerid);
+
+                if (Common.service_want_to_fix != null && !TextUtils.isEmpty(Common.service_want_to_fix)){
+                    Log.e("is found", "is found !?  " + Common.isFixerFound);
+                    if (!Common.isFixerFound){
+                        AccountKit.getCurrentAccount(new AccountKitCallback<Account>() {
+                            @Override
+                            public void onSuccess(Account account) {
+                                requestFixHere(account.getId());
+                            }
+
+                            @Override
+                            public void onError(AccountKitError accountKitError) {
+
+                            }
+                        });
+                    } else{
+                        /*Common.sendRequestToFixer(Common.fixerid, ifcmService, HomeActivity.this, Common.mLastLocation);
+                    Log.d("Fixer id","" + Common.fixerid);*/
+                        Intent intent = new Intent(HomeActivity.this, CallFixer.class);
+                        intent.putExtra("fixerId", Common.fixerid);
+                        intent.putExtra("lat", Common.mLastLocation.getLatitude());
+                        intent.putExtra("lng", Common.mLastLocation.getLongitude());
+                        startActivity(intent);
+                    }
+                } else{
+                    Toast.makeText(HomeActivity.this , "Vui lòng chọn dịch vụ trước" , Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -161,46 +237,28 @@ public class HomeActivity extends AppCompatActivity
         UpdateFireBaseToken();
     }
 
-    private void UpdateFireBaseToken() {
-        FirebaseDatabase db = FirebaseDatabase.getInstance();
-        DatabaseReference tokens = db.getReference(Common.token_tbl);
-        Token token = new Token(FirebaseInstanceId.getInstance().getToken());
-        tokens.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(token);
+    @Override
+    public void onImageViewCLicked(boolean isFix_home_service , boolean isFix_car_service , boolean isFix_motorbike_service) {
+        this.isFix_home_service = isFix_home_service;
+        this.isFix_car_service = isFix_car_service;
+        this.isFix_motorbike_service = isFix_motorbike_service;
+
+        mMap.clear();
+        loadAllAvailableFixer(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()));
     }
 
-    private void sendRequestToFixer(String fixerid) {
-        DatabaseReference token = FirebaseDatabase.getInstance().getReference(Common.token_tbl);
-        token.orderByKey().equalTo(fixerid).addListenerForSingleValueEvent(new ValueEventListener() {
+    private void UpdateFireBaseToken() {
+        AccountKit.getCurrentAccount(new AccountKitCallback<Account>() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                for (DataSnapshot postSnapshot:dataSnapshot.getChildren()){
-                    Token token1 = postSnapshot.getValue(Token.class); // get token object from database with key
-                    //make raw payload - convert latlng to json
-                    String json_lat_lng = new Gson().toJson(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()));
-
-                    String customer_token = FirebaseInstanceId.getInstance().getToken();
-                    Notification notification = new Notification(customer_token, json_lat_lng); // send it to fixer app and we'll deserialize it again
-
-                    Sender content = new Sender(token1.getToken(),notification); // send this notification to token
-                    ifcmService.sendMessage(content).enqueue(new Callback<FCMResponse>() {
-                        @Override
-                        public void onResponse(Call<FCMResponse> call , Response<FCMResponse> response) {
-                            if (response.body().success == 1)
-                                Toast.makeText(HomeActivity.this , "Đã gửi yêu cầu" , Toast.LENGTH_SHORT).show();
-                            else
-                                Toast.makeText(HomeActivity.this , "Gửi yêu cầu thất bại" , Toast.LENGTH_SHORT).show();
-                        }
-
-                        @Override
-                        public void onFailure(Call<FCMResponse> call , Throwable t) {
-                            Log.e("ERROR",t.getMessage());
-                        }
-                    });
-                }
+            public void onSuccess(Account account) {
+                FirebaseDatabase db = FirebaseDatabase.getInstance();
+                DatabaseReference tokens = db.getReference(Common.token_tbl);
+                Token token = new Token(FirebaseInstanceId.getInstance().getToken());
+                tokens.child(account.getId()).setValue(token);
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onError(AccountKitError accountKitError) {
 
             }
         });
@@ -209,33 +267,50 @@ public class HomeActivity extends AppCompatActivity
     private void requestFixHere(String uid) {
         DatabaseReference dbRequest = FirebaseDatabase.getInstance().getReference(fix_request_tbl);
         GeoFire mGeoFire = new GeoFire(dbRequest);
-        mGeoFire.setLocation(uid, new GeoLocation(mLastLocation.getLatitude(), mLastLocation.getLongitude()));
+        mGeoFire.setLocation(uid , new GeoLocation(Common.mLastLocation.getLatitude() , Common.mLastLocation.getLongitude()) ,
+                new GeoFire.CompletionListener() {
+                    @Override
+                    public void onComplete(String key , DatabaseError error) {
+
+                    }
+                });
 
         if (mUserMarker.isVisible())
             mUserMarker.remove();
         //add new marker
-        mUserMarker = mMap.addMarker(new MarkerOptions().title("Sửa ở đây").snippet("").position(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()))
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+        mUserMarker = mMap.addMarker(new MarkerOptions().title("Sửa ở đây").snippet("").position(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()))
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.customer_marker)));
 
         mUserMarker.showInfoWindow();
-
+        boolean tabletSize = getResources().getBoolean(R.bool.isTablet);
+        if (tabletSize){
+            //animation
+            mapRipple = new MapRipple(mMap, new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), this);
+            mapRipple.withNumberOfRipples(4);
+            mapRipple.withDistance(500);
+            mapRipple.withRippleDuration(1000);
+            mapRipple.withTransparency(0.5f);
+            mapRipple.startRippleMapAnimation();
+        }
         btnPickupRequest.setText("Đang tìm thợ sửa khóa cho bạn");
         findFixer();
     }
 
     private void findFixer() {
-        DatabaseReference fixers = FirebaseDatabase.getInstance().getReference(fixer_tbl);
-        GeoFire gfFixer = new GeoFire(fixers);
 
-        GeoQuery geoQuery = gfFixer.queryAtLocation(new GeoLocation(mLastLocation.getLatitude(), mLastLocation.getLongitude()), radius);
+        DatabaseReference fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child(Common.service_want_to_fix).child("activated");
+        GeoFire gfLocation = new GeoFire(fixerLocation);
+        final GeoQuery geoQuery = gfLocation.queryAtLocation(new GeoLocation(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), distance);
+
         geoQuery.removeAllListeners();
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
             public void onKeyEntered(String key , GeoLocation location) {
                 //if found
-                if (!isFixerFound){
-                    isFixerFound = true;
-                    fixerid = key;
+                if (!Common.isFixerFound){
+                    Common.isFixerFound = true;
+                    Common.fixerid = key;
+                    Log.e("warning4", "still finding");
                     btnPickupRequest.setText("Gọi cho thợ sửa khóa");
                     Toast.makeText(HomeActivity.this , "Đã tìm thấy!" , Toast.LENGTH_SHORT).show();
                 }
@@ -254,9 +329,15 @@ public class HomeActivity extends AppCompatActivity
             @Override
             public void onGeoQueryReady() {
                 //if still not found fixer, increase distance
-                if (!isFixerFound){
+                if (!Common.isFixerFound){
                     radius++;
                     findFixer();
+                } else{
+                    if (!Common.isFixerFound){
+                        Toast.makeText(HomeActivity.this , "Không có thợ sửa khóa nào ở gần bạn" , Toast.LENGTH_SHORT).show();
+                        btnPickupRequest.setText("Đặt thợ sửa khóa");
+                        geoQuery.removeAllListeners();
+                    }
                 }
             }
 
@@ -272,11 +353,7 @@ public class HomeActivity extends AppCompatActivity
         switch (requestCode){
             case MY_PERMISSION_REQUEST_CODE:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                    if (checkPlaySerives()){
-                        buildGoogleApiClient();
-                        createLocationRequest();
-                        displayLocation();
-                    }
+                    setupLocation();
                 }
                 break;
         }
@@ -284,71 +361,101 @@ public class HomeActivity extends AppCompatActivity
 
     private void setupLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED){
             //Request runtime permission
             ActivityCompat.requestPermissions(this, new String[]{
                     Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.ACCESS_FINE_LOCATION
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.CALL_PHONE
             },MY_PERMISSION_REQUEST_CODE);
         }
         else{
-            if (checkPlaySerives()){
-                buildGoogleApiClient();
-                createLocationRequest();
+            buildLocationCallBack();
+            createLocationRequest();
+            displayLocation();
+        }
+    }
+
+    private void buildLocationCallBack() {
+        locationCallback = new LocationCallback(){
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                Common.mLastLocation = locationResult.getLocations().get(locationResult.getLocations().size() - 1);
                 displayLocation();
             }
-        }
+        };
     }
 
-    private void displayLocation() {if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+    private void displayLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
             && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
-        return;
-    }
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleAPiClient);
-        if (mLastLocation != null){//co bug cho nay _ mlastLocation = null
-            //presense system
-            fixerAvailable = FirebaseDatabase.getInstance().getReference(Common.fixer_tbl);
-            fixerAvailable.addValueEventListener(new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    //if has any change from fixer table, we will load all fixers available
-                    loadAllAvailableFixer();
-                }
+            return;
+        }
 
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
+        fusedLocationProviderClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
+            @Override
+            public void onSuccess(Location location) {
+                Common.mLastLocation = location;
+                if (Common.mLastLocation != null){//co bug cho nay _ mlastLocation = null
+                    //presense system
+                    if(isFix_home_service)
+                        fixerAvailable = FirebaseDatabase.getInstance().getReference(Common.fixer_tbl).child("S ử a   k h ó a   n h à");
+                    else if (isFix_car_service)
+                        fixerAvailable = FirebaseDatabase.getInstance().getReference(Common.fixer_tbl).child("S ử a   k h ó a   x e   h ơ i");
+                    else if (isFix_motorbike_service)
+                        fixerAvailable = FirebaseDatabase.getInstance().getReference(Common.fixer_tbl).child("S ử a   k h ó a   x e   g ắ n   m á y");
+                    fixerAvailable.addValueEventListener(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            //if has any change from fixer table, we will load all fixers available
+                            loadAllAvailableFixer(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()));
+                        }
 
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+
+                        }
+                    });
+                    //
+                    final double latitude = Common.mLastLocation.getLatitude();
+                    final double longtitude = Common.mLastLocation.getLongitude();
+                    //Add marker
+                    if (mUserMarker != null){
+                        mUserMarker.remove(); //remove already marker
+                    }
+                    Log.d("message","/////////////////////////////////////////////////////");
+                    mUserMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longtitude)).title("Bạn"));
+                    //Move camera to this position
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude,longtitude),15.0f));
+                    loadAllAvailableFixer(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()));
+
+                } else{
+                    Log.d("Ối!", "Không thể xác định được vị trí của bạn");
                 }
-            });
-            //
-            final double latitude = mLastLocation.getLatitude();
-            final double longtitude = mLastLocation.getLongitude();
-            //Add marker
-            if (mUserMarker != null){
-                mUserMarker.remove(); //remove already marker
             }
-            Log.d("message","/////////////////////////////////////////////////////");
-            mUserMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longtitude)).title("Bạn"));
-            //Move camera to this position
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude,longtitude),15.0f));
-            loadAllAvailableFixer();
-
-        }
-        else{
-            Log.d("Ối!", "Không thể xác định được vị trí của bạn");
-            Toast.makeText(this, "Bạn bật GPS chưa nhỉ ?!", Toast.LENGTH_SHORT).show();
-        }
+        });
     }
 
-    private void loadAllAvailableFixer() {
+    private void loadAllAvailableFixer(final LatLng location) {
         //remove all marker, include fixer or customer
         mMap.clear();
         //after that, just add our location again
-        mMap.addMarker(new MarkerOptions().position(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())).title("Bạn"));
-        DatabaseReference fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl);
+        mMap.addMarker(new MarkerOptions()
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.customer_marker))
+                .position(location)
+                .title("Bạn"));
+        DatabaseReference fixerLocation = null;
+        if (isFix_home_service) {
+            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   n h à").child("activated");
+        } else if (isFix_car_service) {
+            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   x e   h ơ i").child("activated");
+        } else if (isFix_motorbike_service) {
+            fixerLocation = FirebaseDatabase.getInstance().getReference(fixer_tbl).child("S ử a   k h ó a   x e   g ắ n   m á y").child("activated");
+        }
         GeoFire gfLocation = new GeoFire(fixerLocation);
 
-        GeoQuery geoQuery = gfLocation.queryAtLocation(new GeoLocation(mLastLocation.getLatitude(), mLastLocation.getLongitude()), distance);
+        GeoQuery geoQuery = gfLocation.queryAtLocation(new GeoLocation(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()), distance);
         geoQuery.removeAllListeners();
 
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
@@ -363,7 +470,8 @@ public class HomeActivity extends AppCompatActivity
                         Log.d("Key","" + key);
                         //add fixer to map
                         mMap.addMarker(new MarkerOptions().position(new LatLng(location.latitude, location.longitude))
-                                                            .flat(true).title(user.getStrName() + "\n" + "Số điện thoại: " + user.getStrPhone())
+                                                            .flat(true).title("Tên thợ sửa khóa: " + user.getStrName() + "\nSố điện thoại: " + user.getStrPhone())
+                                                            .snippet("ID thợ sửa khóa: " + dataSnapshot.getKey())
                                                             .icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
                         KEY = key;
                         Log.d("key","" + KEY);
@@ -389,7 +497,7 @@ public class HomeActivity extends AppCompatActivity
             public void onGeoQueryReady() {
                 if (distance <= LIMIT){
                     distance++;
-                    loadAllAvailableFixer();
+                    loadAllAvailableFixer(new LatLng(Common.mLastLocation.getLatitude(), Common.mLastLocation.getLongitude()));
                 }
             }
 
@@ -418,25 +526,6 @@ public class HomeActivity extends AppCompatActivity
         mLocationRequest.setSmallestDisplacement(DISPLACEMENT);
     }
 
-    private void buildGoogleApiClient() {
-        mGoogleAPiClient = new GoogleApiClient.Builder(this).addConnectionCallbacks(this).addOnConnectionFailedListener(this).addApi(LocationServices.API).build();
-        mGoogleAPiClient.connect();
-    }
-
-    private boolean checkPlaySerives() {
-        int result_code = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
-        if (result_code != ConnectionResult.SUCCESS){
-            if (GooglePlayServicesUtil.isUserRecoverableError(result_code))
-                GooglePlayServicesUtil.getErrorDialog(result_code, this, PLAY_SERVICE_RES_REQUEST).show();
-            else{
-                Toast.makeText(this, "Thiết bị này chưa hỗ trợ google play services", Toast.LENGTH_SHORT).show();
-                finish();
-            }
-            return false;
-        }
-        return true;
-    }
-
     @Override
     public void onBackPressed() {
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -463,10 +552,33 @@ public class HomeActivity extends AppCompatActivity
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
-            return true;
         }
 
-        return super.onOptionsItemSelected(item);
+        return true;
+    }
+
+    private void signOut() {
+        AlertDialog.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            builder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
+        else
+            builder = new AlertDialog.Builder(this);
+
+        builder.setMessage("Thật sự muốn thoát!?").setPositiveButton(android.R.string.ok , new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog , int which) {
+                AccountKit.logOut();
+                Intent intent = new Intent(HomeActivity.this, MainActivity.class);
+                startActivity(intent);
+                finish();
+            }
+        }).setNegativeButton(android.R.string.cancel , new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog , int which) {
+                dialog.dismiss();
+            }
+        });
+        builder.show();
     }
 
     @SuppressWarnings("StatementWithEmptyBody")
@@ -475,18 +587,10 @@ public class HomeActivity extends AppCompatActivity
         // Handle navigation view item clicks here.
         int id = item.getItemId();
 
-        if (id == R.id.nav_camera) {
-            // Handle the camera action
-        } else if (id == R.id.nav_gallery) {
-
-        } else if (id == R.id.nav_slideshow) {
-
-        } else if (id == R.id.nav_manage) {
-
-        } else if (id == R.id.nav_share) {
-
-        } else if (id == R.id.nav_send) {
-
+        if (id == R.id.nav_signout) {
+            signOut();
+        } else if (id == R.id.nav_update_information) {
+            ShowUpdateDialog();
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -494,9 +598,73 @@ public class HomeActivity extends AppCompatActivity
         return true;
     }
 
+    private void ShowUpdateDialog() {
+        AlertDialog.Builder alertdialog = new AlertDialog.Builder(HomeActivity.this);
+        alertdialog.setTitle("Thay đổi thông tin");
+        alertdialog.setMessage("Xin hãy điền đầy đủ thông tin");
+
+        LayoutInflater inflater = this.getLayoutInflater();
+        View layout_changeInf = inflater.inflate(R.layout.layout_update_information, null);
+
+        final MaterialEditText edtName = (MaterialEditText)layout_changeInf.findViewById(R.id.edt_Name);
+        final MaterialEditText edtPhone = (MaterialEditText)layout_changeInf.findViewById(R.id.edt_Phone);
+        final ImageView imgAvatar = (ImageView)layout_changeInf.findViewById(R.id.image_upload);
+        imgAvatar.setOnClickListener(this);
+        alertdialog.setView(layout_changeInf);
+
+        //set button
+        alertdialog.setPositiveButton("Cập nhật" , new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog , int which) {
+                dialog.dismiss();
+                AccountKit.getCurrentAccount(new AccountKitCallback<Account>() {
+                    @Override
+                    public void onSuccess(Account account) {
+                        final AlertDialog waitingdialog = new SpotsDialog(HomeActivity.this);
+                        waitingdialog.show();
+
+                        String name = edtName.getText().toString();
+                        String phone = edtPhone.getText().toString();
+
+                        Map<String, Object> updateInfo = new HashMap<>();
+                        if (!TextUtils.isEmpty(name))
+                            updateInfo.put("strName", name);
+                        if (!TextUtils.isEmpty(phone))
+                            updateInfo.put("strPhone", phone);
+
+
+                        DatabaseReference customerInformation = FirebaseDatabase.getInstance().getReference(Common.customer_tbl);
+                        customerInformation.child(account.getId()).updateChildren(updateInfo)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful())
+                                            Toast.makeText(HomeActivity.this , "Thông tin được thay đổi hoàn tất" , Toast.LENGTH_SHORT).show();
+                                        else
+                                            Toast.makeText(HomeActivity.this , "Xin lỗi, đã có lỗi trong quá trình cập nhật thông tin" , Toast.LENGTH_SHORT).show();
+                                        waitingdialog.dismiss();
+                                    }
+                                });
+                    }
+
+                    @Override
+                    public void onError(AccountKitError accountKitError) {
+
+                    }
+                });
+            }
+        });
+        alertdialog.setNegativeButton("Hủy" , new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog , int which) {
+                dialog.dismiss();
+            }
+        });
+        alertdialog.show();
+    }
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
-
         mMap = googleMap;
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.getUiSettings().setZoomGesturesEnabled(true);
@@ -510,35 +678,98 @@ public class HomeActivity extends AppCompatActivity
         googleMap.addMarker(new MarkerOptions().position(new LatLng(37.7750,122.4183)).title("San Francisco"));
         googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(37.7750,122.4183), 12));
         */
+        mMap.setOnInfoWindowClickListener(this);
+        buildLocationCallBack();
+        createLocationRequest();
+        fusedLocationProviderClient.requestLocationUpdates(mLocationRequest, locationCallback, Looper.myLooper());
     }
 
     @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        displayLocation();
-        startLocationUpdate();
-    }
-
-    private void startLocationUpdate() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
-            return;
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.image_upload:
+                chooseImage();
+                break;
         }
-        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleAPiClient, mLocationRequest, this);
+    }
+
+    private void chooseImage() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent, "Chọn hình đại diện..."), Common.PICK_IMAGE_REQUEST);
     }
 
     @Override
-    public void onConnectionSuspended(int i) {
-        mGoogleAPiClient.connect();
+    protected void onActivityResult(int requestCode , int resultCode , Intent data) {
+        super.onActivityResult(requestCode , resultCode , data);
+        if (requestCode == Common.PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null){
+            Uri saveuri = data.getData();
+            if (saveuri != null){
+                final ProgressDialog mDialog = new ProgressDialog(this);
+                mDialog.setMessage("Đang tải ... ");
+                mDialog.show();
+
+                String imageName = UUID.randomUUID().toString();
+                final StorageReference imageFolder = storageReference.child("images/" + imageName);
+                imageFolder.putFile(saveuri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                    @Override
+                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                        mDialog.dismiss();
+                        imageFolder.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                            @Override
+                            public void onSuccess(final Uri uri) {
+                                Toast.makeText(HomeActivity.this , "Đang tải ... " , Toast.LENGTH_SHORT).show();
+                                AccountKit.getCurrentAccount(new AccountKitCallback<Account>() {
+                                    @Override
+                                    public void onSuccess(Account account) {
+                                        Map<String, Object> avatarUpdate = new HashMap<>();
+                                        avatarUpdate.put("strAvatarUrl", uri.toString());
+                                        DatabaseReference customerInformation = FirebaseDatabase.getInstance().getReference(Common.customer_tbl);
+                                        customerInformation.child(account.getId()).updateChildren(avatarUpdate)
+                                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                    @Override
+                                                    public void onComplete(@NonNull Task<Void> task) {
+                                                        if (task.isSuccessful())
+                                                            Toast.makeText(HomeActivity.this , "Tải hoàn tất" , Toast.LENGTH_SHORT).show();
+                                                        else
+                                                            Toast.makeText(HomeActivity.this , "Tải thất bại" , Toast.LENGTH_SHORT).show();
+                                                    }
+                                                });
+                                    }
+
+                                    @Override
+                                    public void onError(AccountKitError accountKitError) {
+
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }).addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
+                    @Override
+                    public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
+                        double progress = (100.0 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
+                        mDialog.setMessage("Đã tải được " + progress + "%");
+                    }
+                }).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+        }
     }
 
     @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Toast.makeText(this , "Cyka blyat! The fucking capitalism take over the internet .. take them now! ☭" , Toast.LENGTH_SHORT).show();
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        mLastLocation = location;
-        displayLocation();
+    public void onInfoWindowClick(Marker marker) {
+        if (!marker.getTitle().equals("Bạn")){
+            Intent intent = new Intent(HomeActivity.this, CallFixer.class);
+            intent.putExtra("fixerId", marker.getSnippet().replaceAll("\\D+", ""));
+            intent.putExtra("lat", Common.mLastLocation.getLatitude());
+            intent.putExtra("lng", Common.mLastLocation.getLongitude());
+            startActivity(intent);
+        }
     }
 }

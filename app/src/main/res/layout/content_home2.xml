@@ -8,40 +8,62 @@
     tools:context=".HomeActivity"
     tools:showIn="@layout/app_bar_home2">
 
-    <RelativeLayout android:layout_width="match_parent"
+    <RelativeLayout
+        android:layout_width="match_parent"
         android:layout_height="match_parent">
 
         <fragment
             android:id="@+id/map"
             android:name="com.google.android.gms.maps.SupportMapFragment"
+            android:background="@drawable/corner"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
-        <android.support.v7.widget.CardView
-            android:layout_height="wrap_content"
+
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_alignParentBottom="true"
-            app:cardElevation="10dp">
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true">
 
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="50dp">
+            <Button
+                android:layout_width="55dp"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"/>
 
-                <ImageView
-                    android:id="@+id/ic_showup"
-                    android:layout_alignParentRight="true"
-                    android:background="#333333"
-                    android:src="@drawable/ic_showup"
-                    android:layout_width="50dp"
-                    android:layout_height="wrap_content" />
-                <Button
+            <android.support.v7.widget.CardView
+                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_weight="4"
+                app:cardElevation="10dp">
+
+                <LinearLayout
+                    android:background="@color/black"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/basePressColor"
-                    android:id="@+id/btn_GoiThoSuaKhoa"
-                    android:layout_toLeftOf="@id/ic_showup"
-                    android:background="@android:color/holo_blue_dark"
-                    android:text="Gọi thợ sửa khóa"/>
-            </RelativeLayout>
-        </android.support.v7.widget.CardView>
+                    android:layout_height="50dp">
+
+                    <Button
+                        android:layout_weight="1"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:textColor="@color/basePressColor"
+                        android:id="@+id/btn_GoiThoSuaKhoa"
+                        android:background="@android:color/holo_blue_dark"
+                        android:text="Đặt thợ sửa khóa"/>
+
+                    <Button
+                        android:layout_weight="1"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:textColor="@android:color/white"
+                        android:textStyle="bold"
+                        android:id="@+id/ic_showup"
+                        android:background="@android:color/darker_gray"
+                        android:text="Chọn dịch vụ"/>
+                </LinearLayout>
+            </android.support.v7.widget.CardView>
+            <Button
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"/>
+        </LinearLayout>
     </RelativeLayout>
 </RelativeLayout>

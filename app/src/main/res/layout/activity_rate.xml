@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    tools:context=".RateActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@drawable/corner"
+        android:padding="10dp"
+        android:gravity="center_horizontal"
+        android:layout_margin="5dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cảm ơn đã sử dụng app"
+            android:textAlignment="center"
+            android:textSize="25sp"
+            android:textColor="@android:color/holo_blue_light"
+            android:textStyle="bold"
+            android:textAllCaps="true"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Đánh giá thợ sửa"
+            android:layout_marginTop="20dp"
+            android:textAlignment="center"
+            android:textSize="25sp"
+            android:textColor="#333333"
+            android:textStyle="bold"
+            android:textAllCaps="true"/>
+
+
+        <me.zhanghai.android.materialratingbar.MaterialRatingBar
+            android:id="@+id/ratingBar"
+            android:layout_width="wrap_content"
+            android:layout_height="62dp"
+            android:layout_margin="20dp"
+            android:rating="0"
+            app:mrb_progressTint="@color/cardview_dark_background"
+            app:mrb_secondaryProgressTint="@color/cardview_dark_background" />
+
+        <com.rengwuxian.materialedittext.MaterialEditText
+            android:id="@+id/edtComment"
+            android:inputType="textMultiLine"
+            android:maxLines="10"
+            android:hint="Phê bình hoặc có ý kiến đóng góp về thợ"
+            android:textColor="@color/colorPrimary"
+            android:textColorHint="@color/colorPrimary"
+            android:textSize="18sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            app:met_baseColor="@color/colorPrimary"
+            app:met_floatingLabel="highlight"
+            app:met_primaryColor="@color/colorPrimary"
+            app:met_singleLineEllipsis="false"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="2"
+            android:layout_below="@id/edtComment"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            android:layout_marginTop="50dp">
+
+            <Button
+                android:background="@drawable/btnskip"
+                android:id="@+id/btn_skip"
+                android:textColor="@android:color/white"
+                android:text="B Ỏ   Q U A"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content" />
+            <Button
+                android:background="@drawable/btnpostcomment"
+                android:id="@+id/btn_postcomment"
+                android:textColor="@android:color/white"
+                android:text="G Ử I   B Ì N H   L U Ậ N"
+                android:layout_marginLeft="20dp"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

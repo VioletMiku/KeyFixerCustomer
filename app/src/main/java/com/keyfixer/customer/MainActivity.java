@@ -1,19 +1,37 @@
 package com.keyfixer.customer;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
+import com.facebook.accountkit.Account;
+import com.facebook.accountkit.AccountKit;
+import com.facebook.accountkit.AccountKitCallback;
+import com.facebook.accountkit.AccountKitError;
+import com.facebook.accountkit.AccountKitLoginResult;
+import com.facebook.accountkit.ui.AccountKitActivity;
+import com.facebook.accountkit.ui.AccountKitConfiguration;
+import com.facebook.accountkit.ui.LoginType;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.ValueEventListener;
+import com.keyfixer.customer.Common.Common;
 import com.keyfixer.customer.Model.User;
 import com.google.firebase.FirebaseApp;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -25,18 +43,21 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.rengwuxian.materialedittext.MaterialEditText;
 
 import dmax.dialog.SpotsDialog;
+import io.paperdb.Paper;
 import uk.co.chrisjenx.calligraphy.CalligraphyConfig;
 import uk.co.chrisjenx.calligraphy.CalligraphyContextWrapper;
 
 import static com.keyfixer.customer.Common.Common.customer_tbl;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
     RelativeLayout welcomeLayout;
-    Button btnSignIn, btnRegister;
+    Button btnContinue;
     FirebaseAuth auth;
     FirebaseDatabase db;
     DatabaseReference users;
+    TextView txt_forget_password;
+    private static final int REQUEST_CODE = 1000;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -53,178 +74,182 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         setContentView(R.layout.activity_main);
 
+        //Init paper
+        Paper.init(this);
         //Init Firebase
         FirebaseApp.initializeApp(this);
         auth = FirebaseAuth.getInstance();
         db = FirebaseDatabase.getInstance();
         users = db.getReference(customer_tbl);
+        txt_forget_password = (TextView) findViewById(R.id.txt_forgot_password);
 
         //Init view
         GetButtonControl();
+
+//Auto login with Facebook account kit for second time
+        if (AccountKit.getCurrentAccessToken() != null){
+            //create dialog
+            final AlertDialog waitingDialog = new SpotsDialog(this);
+            waitingDialog.show();
+            waitingDialog.setMessage("Chờ trong giây lát");
+            waitingDialog.setCancelable(false);
+
+            AccountKit.getCurrentAccount(new AccountKitCallback<Account>() {
+                @Override
+                public void onSuccess(Account account) {
+
+                    users.child(account.getId()).addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            Common.currentUser = dataSnapshot.getValue(User.class);
+                            Intent homeIntent = new Intent(MainActivity.this, HomeActivity.class);
+                            startActivity(homeIntent);
+
+                            //dismiss dialog
+                            waitingDialog.dismiss();
+                            finish();
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+
+                        }
+                    });
+                }
+
+                @Override
+                public void onError(AccountKitError accountKitError) {
+
+                }
+            });
+        }
     }
 
     void GetButtonControl(){
-        btnSignIn = (Button) findViewById(R.id.btn_signin);
-        btnRegister = (Button) findViewById(R.id.btn_register);
+        btnContinue = (Button) findViewById(R.id.btn_Continue);
         welcomeLayout = (RelativeLayout) findViewById(R.id.welcome_Layout);
-        btnSignIn.setOnClickListener(this);
-        btnRegister.setOnClickListener(this);
+        btnContinue.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View v) {
         switch(v.getId()){
-            case R.id.btn_signin:
-                ShowLoginDialog();
-                break;
-            case R.id.btn_register:
-                ShowRegisterDialog();
+            case R.id.btn_Continue:
+                SignInWithPhone();
                 break;
         }
     }
 
-    private void ShowRegisterDialog(){
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-        dialog.setTitle("Đăng kí tài khoản ");
-        dialog.setMessage("Làm ơn dùng email mà đăng ký giùm mình nhé !");
-
-        LayoutInflater inflater = LayoutInflater.from(this);
-        View register_layout = inflater.inflate(R.layout.layout_register, null);
-
-        final MaterialEditText edtEmail = register_layout.findViewById(R.id.edt_Email);
-        final MaterialEditText edtPass = register_layout.findViewById(R.id.edt_Password);
-        final MaterialEditText edtName = register_layout.findViewById(R.id.edt_Name);
-        final MaterialEditText edtPhone = register_layout.findViewById(R.id.edt_Phone);
-
-        dialog.setView(register_layout);
-
-        //Set for the agree button :v ... ofcourse
-        dialog.setPositiveButton("Đăng ký", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int which) {
-                dialogInterface.dismiss();
-                //validation
-                if (TextUtils.isEmpty(edtEmail.getText().toString())){
-                    Snackbar.make(welcomeLayout,"Làm ơn nhập email giùm",Snackbar.LENGTH_SHORT).show();
-                    return;
-                }
-                if (TextUtils.isEmpty(edtPass.getText().toString())){
-                    Snackbar.make(welcomeLayout,"Làm ơn nhập mật khẩu giùm",Snackbar.LENGTH_SHORT).show();
-                    return;
-                }
-                if (edtPass.getText().toString().length() < 6){
-                    Snackbar.make(welcomeLayout,"Mật khẩu ngắn quá!!!",Snackbar.LENGTH_SHORT).show();
-                    return;
-                }
-                if (TextUtils.isEmpty(edtPhone.getText().toString())){
-                    Snackbar.make(welcomeLayout,"Làm ơn cung cấp số điện thoại nhé",Snackbar.LENGTH_SHORT).show();
-                    return;
-                }
-                if (TextUtils.isEmpty(edtName.getText().toString())){
-                    Snackbar.make(welcomeLayout,"Thiếu cái tên nữa",Snackbar.LENGTH_SHORT).show();
-                    return;
-                }
-                //Done ... now, let register new user
-                auth.createUserWithEmailAndPassword(edtEmail.getText().toString(), edtPass.getText().toString()).addOnSuccessListener(new OnSuccessListener<AuthResult>() {
-                    @Override
-                    public void onSuccess(AuthResult authResult) {
-                        //save user to db
-                        User customer = new User();
-                        customer.setStrEmail(edtEmail.getText().toString());
-                        customer.setStrPassword(edtPass.getText().toString());
-                        customer.setStrName(edtName.getText().toString());
-                        customer.setStrPhone(edtPhone.getText().toString());
-
-                        //use email as key
-                        users.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(customer).addOnSuccessListener(new OnSuccessListener<Void>() {
-                            @Override
-                            public void onSuccess(Void aVoid) {
-                                Snackbar.make(welcomeLayout,"Đăng ký thành công! <3",Snackbar.LENGTH_SHORT).show();
-                            }
-                        }).addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                Snackbar.make(welcomeLayout,"Đăng ký thất bại " + e.getMessage(), Snackbar.LENGTH_SHORT).show();
-                            }
-                        });
-                    }
-                }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Snackbar.make(welcomeLayout,"" + e.getMessage(),Snackbar.LENGTH_SHORT).show();
-                        System.out.print(e.getMessage());
-                    }
-                });
-            }
-        });
-        dialog.setNegativeButton("Hủy", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int which) {
-                dialogInterface.dismiss();
-            }
-        });
-
-        dialog.show();
+    private void SignInWithPhone() {
+        Intent intent = new Intent(MainActivity.this, AccountKitActivity.class);
+        AccountKitConfiguration.AccountKitConfigurationBuilder configurationBuilder
+                = new AccountKitConfiguration.AccountKitConfigurationBuilder(LoginType.PHONE, AccountKitActivity.ResponseType.TOKEN);
+        intent.putExtra(AccountKitActivity.ACCOUNT_KIT_ACTIVITY_CONFIGURATION, configurationBuilder.build());
+        startActivityForResult(intent, REQUEST_CODE);
     }
 
-    private void ShowLoginDialog(){
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-        dialog.setTitle("Đăng nhập");
-        dialog.setMessage("Đăng nhập để sử dụng nhé !");
+    @Override
+    protected void onActivityResult(int requestCode , int resultCode , Intent data) {
+        super.onActivityResult(requestCode , resultCode , data);
+        if (requestCode == REQUEST_CODE){
+            AccountKitLoginResult result = data.getParcelableExtra(AccountKitLoginResult.RESULT_KEY);
+            if (result.getError() != null){
+                Toast.makeText(this , "Có lỗi xảy ra trong quá trình đăng nhập!" , Toast.LENGTH_SHORT).show();
+                Log.e("ERROR_while_login", "" + result.getError().getErrorType().getMessage());
+                return;
+            } else if (result.wasCancelled()){
+                Toast.makeText(this , "Đã hủy" , Toast.LENGTH_SHORT).show();
+                return;
+            } else{
+                if (result.getAccessToken() != null){
+                    final AlertDialog waitingDialog = new SpotsDialog(this);
+                    waitingDialog.show();
+                    waitingDialog.setMessage("Chờ trong giây lát");
+                    waitingDialog.setCancelable(false);
+                    //Get current phone
+                    AccountKit.getCurrentAccount((new AccountKitCallback<Account>() {
+                        @Override
+                        public void onSuccess(final Account account) {
+                            final String userId = account.getId();
+                            users.orderByKey().equalTo(account.getId()).addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                    if(!dataSnapshot.child(account.getId()).exists()) {// if not exist
+                                        //create new user and login
+                                        User user = new User();
+                                        user.setStrPhone(account.getPhoneNumber().toString());
+                                        user.setStrName(account.getPhoneNumber().toString());
+                                        user.setAvatarUrl("");
 
-        LayoutInflater inflater = LayoutInflater.from(this);
-        View register_layout = inflater.inflate(R.layout.layout_login, null);
+                                        //register to firebase
+                                        users.child(account.getId()).setValue(user).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                            @Override
+                                            public void onSuccess(Void aVoid) {
+                                                //login
+                                                users.child(account.getId()).addListenerForSingleValueEvent(new ValueEventListener() {
+                                                    @Override
+                                                    public void onDataChange(DataSnapshot dataSnapshot) {
+                                                        Common.currentUser = dataSnapshot.getValue(User.class);
+                                                        Intent homeIntent = new Intent(MainActivity.this, HomeActivity.class);
+                                                        Toast.makeText(MainActivity.this , "Nhớ sửa lại tên sau khi vào trang chính" , Toast.LENGTH_SHORT).show();
+                                                        startActivity(homeIntent);
 
-        final MaterialEditText edtEmail = register_layout.findViewById(R.id.edt_Email);
-        final MaterialEditText edtPass = register_layout.findViewById(R.id.edt_Password);
+                                                        //dismiss dialog
+                                                        waitingDialog.dismiss();
+                                                        finish();
+                                                    }
 
-        dialog.setView(register_layout);
+                                                    @Override
+                                                    public void onCancelled(DatabaseError databaseError) {
 
-        //Set for the agree button :v ... ofcourse
-        dialog.setPositiveButton("Đăng nhập", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int which) {
-                dialogInterface.dismiss();
-                //set disable button sign in if is processing
-                btnSignIn.setEnabled(false);
-                //validation
-                if (TextUtils.isEmpty(edtEmail.getText().toString())){
-                    Snackbar.make(welcomeLayout,"Làm ơn nhập email giùm",Snackbar.LENGTH_SHORT).show();
-                    return;
+                                                    }
+                                                });
+                                            }
+                                        }).addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                Toast.makeText(MainActivity.this , "Có lỗi xảy ra trong quá trình đăng kí thông tin" , Toast.LENGTH_SHORT).show();
+                                                Log.e("ERROR_WHILE_REGISTER", "" + e.getMessage());
+                                            }
+                                        });
+                                    } else{ // if user existing -> just login
+                                        //login
+                                        users.child(account.getId()).addListenerForSingleValueEvent(new ValueEventListener() {
+                                            @Override
+                                            public void onDataChange(DataSnapshot dataSnapshot) {
+                                                Common.currentUser = dataSnapshot.getValue(User.class);
+                                                Intent homeIntent = new Intent(MainActivity.this, HomeActivity.class);
+                                                startActivity(homeIntent);
+
+                                                //dismiss dialog
+                                                waitingDialog.dismiss();
+                                                finish();
+                                            }
+
+                                            @Override
+                                            public void onCancelled(DatabaseError databaseError) {
+
+                                            }
+                                        });
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
+
+                                }
+                            });
+                        }
+
+                        @Override
+                        public void onError(AccountKitError accountKitError) {
+                            Toast.makeText(MainActivity.this , "Đã có lỗi xảy ra trong quá trình liên kết với máy chủ" , Toast.LENGTH_SHORT).show();
+                            Log.e("Error_linking_FB","" + accountKitError.getErrorType().getMessage());
+                        }
+                    }));
                 }
-                if (TextUtils.isEmpty(edtPass.getText().toString())){
-                    Snackbar.make(welcomeLayout,"Làm ơn nhập mật khẩu giùm",Snackbar.LENGTH_SHORT).show();
-                    return;
-                }
-                final SpotsDialog waiting_dialog = new SpotsDialog(MainActivity.this);
-                waiting_dialog.show();
-                //Login
-                auth.signInWithEmailAndPassword(edtEmail.getText().toString(), edtPass.getText().toString())
-                        .addOnSuccessListener(new OnSuccessListener<AuthResult>() {
-                            @Override
-                            public void onSuccess(AuthResult authResult) {
-                                waiting_dialog.dismiss();
-                                startActivity(new Intent(MainActivity.this, HomeActivity.class));
-                                finish();
-                            }
-                        }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        waiting_dialog.dismiss();
-                        Snackbar.make(welcomeLayout,"Đăng nhập thất bại!",Snackbar.LENGTH_SHORT).show();
-                        //set enable button sign in if it failed
-                        btnSignIn.setEnabled(true);
-                    }
-                });
             }
-        });
-        dialog.setNegativeButton("Hủy", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int which) {
-                dialogInterface.dismiss();
-            }
-        });
-
-        dialog.show();
+        }
     }
+
 }

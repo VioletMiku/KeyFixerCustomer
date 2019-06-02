@@ -4,6 +4,9 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -42,6 +45,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.rengwuxian.materialedittext.MaterialEditText;
 
+import SweetAlert.SweetAlertDialog;
 import dmax.dialog.SpotsDialog;
 import io.paperdb.Paper;
 import uk.co.chrisjenx.calligraphy.CalligraphyConfig;
@@ -86,44 +90,61 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //Init view
         GetButtonControl();
 
-//Auto login with Facebook account kit for second time
-        if (AccountKit.getCurrentAccessToken() != null){
-            //create dialog
-            final AlertDialog waitingDialog = new SpotsDialog(this);
-            waitingDialog.show();
-            waitingDialog.setMessage("Chờ trong giây lát");
-            waitingDialog.setCancelable(false);
+        ConnectivityManager conMgr =  (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = conMgr.getActiveNetworkInfo();
+        if (netInfo == null){
+            createInternetNotAvailableDialog();
+        }else{
+            // if network is available
 
-            AccountKit.getCurrentAccount(new AccountKitCallback<Account>() {
-                @Override
-                public void onSuccess(Account account) {
+            //Auto login with Facebook account kit for second time
+            if (AccountKit.getCurrentAccessToken() != null) {
+                //create dialog
+                final AlertDialog waitingDialog = new SpotsDialog(this);
+                waitingDialog.show();
+                waitingDialog.setMessage("Chờ trong giây lát");
+                waitingDialog.setCancelable(false);
 
-                    users.child(account.getId()).addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
-                            Common.currentUser = dataSnapshot.getValue(User.class);
-                            Intent homeIntent = new Intent(MainActivity.this, HomeActivity.class);
-                            startActivity(homeIntent);
+                AccountKit.getCurrentAccount(new AccountKitCallback<Account>() {
+                    @Override
+                    public void onSuccess(Account account) {
 
-                            //dismiss dialog
-                            waitingDialog.dismiss();
-                            finish();
-                        }
+                        users.child(account.getId()).addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot dataSnapshot) {
+                                Common.currentUser = dataSnapshot.getValue(User.class);
+                                Intent homeIntent = new Intent(MainActivity.this, HomeActivity.class);
+                                startActivity(homeIntent);
 
-                        @Override
-                        public void onCancelled(DatabaseError databaseError) {
+                                //dismiss dialog
+                                waitingDialog.dismiss();
+                                finish();
+                            }
 
-                        }
-                    });
-                }
+                            @Override
+                            public void onCancelled(DatabaseError databaseError) {
 
-                @Override
-                public void onError(AccountKitError accountKitError) {
+                            }
+                        });
+                    }
 
-                }
-            });
+                    @Override
+                    public void onError(AccountKitError accountKitError) {
+
+                    }
+                });
+            }
         }
     }
+
+    private void createInternetNotAvailableDialog(){
+        SweetAlertDialog dialog = new SweetAlertDialog(this, SweetAlertDialog.WARNING_TYPE);
+        dialog.getProgressHelper().setBarColor(Color.parseColor("#A5DC86"));
+        dialog.setTitleText("Vui lòng kiểm tra lại kết nối mạng");
+        dialog.setCancelable(true);
+        dialog.show();
+    }
+
 
     void GetButtonControl(){
         btnContinue = (Button) findViewById(R.id.btn_Continue);

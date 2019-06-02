@@ -58,6 +58,8 @@ dependencies {
     implementation 'io.paperdb:paperdb:2.6'
     /// user list of facebook account
     implementation 'com.facebook.android:account-kit-sdk:4.+'
+    //material dialog
+    implementation 'com.pnikosis:materialish-progress:1.7'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'

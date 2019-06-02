@@ -197,13 +197,13 @@ public class HomeActivity extends AppCompatActivity
         btnPickupRequest = (Button) findViewById(R.id.btn_GoiThoSuaKhoa);
 
         if (Common.isFixDone || Common.isExitFromCallFixerUI) {
+            //Common.isFixDone = false;
             btnPickupRequest.setText("Đặt thợ sửa khóa");
         }
 
         btnPickupRequest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 if (Common.service_want_to_fix != null && !TextUtils.isEmpty(Common.service_want_to_fix)){
                     Log.e("is found", "is found !?  " + Common.isFixerFound);
                     if (!Common.isFixerFound){
@@ -271,13 +271,17 @@ public class HomeActivity extends AppCompatActivity
     private void requestFixHere(String uid) {
         DatabaseReference dbRequest = FirebaseDatabase.getInstance().getReference(fix_request_tbl);
         GeoFire mGeoFire = new GeoFire(dbRequest);
-        mGeoFire.setLocation(uid , new GeoLocation(Common.mLastLocation.getLatitude() , Common.mLastLocation.getLongitude()) ,
-                new GeoFire.CompletionListener() {
-                    @Override
-                    public void onComplete(String key , DatabaseError error) {
+        try{
+            mGeoFire.setLocation(uid , new GeoLocation(Common.mLastLocation.getLatitude() , Common.mLastLocation.getLongitude()) ,
+                    new GeoFire.CompletionListener() {
+                        @Override
+                        public void onComplete(String key , DatabaseError error) {
 
-                    }
-                });
+                        }
+                    });
+        }catch (Exception ex){
+            Toast.makeText(this, "Không lấy được vị trí của bạn, vui lòng kiểm tra GPS hoặc thử lại", Toast.LENGTH_SHORT).show();
+        }
 
         if (mUserMarker.isVisible())
             mUserMarker.remove();
@@ -294,7 +298,7 @@ public class HomeActivity extends AppCompatActivity
             mapRipple.withDistance(500);
             mapRipple.withRippleDuration(1000);
             mapRipple.withTransparency(0.5f);
-            mapRipple.startRippleMapAnimation();
+            //mapRipple.startRippleMapAnimation();
         }
         btnPickupRequest.setText("Đang tìm thợ sửa khóa cho bạn");
         findFixer();
@@ -314,7 +318,6 @@ public class HomeActivity extends AppCompatActivity
                 if (!Common.isFixerFound){
                     Common.isFixerFound = true;
                     Common.fixerid = key;
-                    Log.e("warning4", "still finding");
                     btnPickupRequest.setText("Gọi cho thợ sửa khóa");
                     Toast.makeText(HomeActivity.this , "Đã tìm thấy!" , Toast.LENGTH_SHORT).show();
                 }
@@ -335,12 +338,12 @@ public class HomeActivity extends AppCompatActivity
                 //if still not found fixer, increase distance
                 if (!Common.isFixerFound){
                     radius++;
-                    findFixer();
-                } else{
-                    if (!Common.isFixerFound){
-                        Toast.makeText(HomeActivity.this , "Không có thợ sửa khóa nào ở gần bạn" , Toast.LENGTH_SHORT).show();
+                    if (radius >= 4){
+                        Toast.makeText(HomeActivity.this , "Không có thợ sửa khóa nào ở gần bạn" , Toast.LENGTH_LONG).show();
                         btnPickupRequest.setText("Đặt thợ sửa khóa");
                         geoQuery.removeAllListeners();
+                    } else {
+                        findFixer();
                     }
                 }
             }
@@ -754,7 +757,7 @@ public class HomeActivity extends AppCompatActivity
                     @Override
                     public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
                         double progress = (100.0 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
-                        mDialog.setMessage("Đã tải được " + progress + "%");
+                        mDialog.setMessage("Đã tải được " + (int) progress + "%");
                     }
                 }).addOnFailureListener(new OnFailureListener() {
                     @Override

@@ -50,15 +50,16 @@ public class Common {
     public static final String rate_detail_tbl = "RateDetails";
     public static final String fcmUrl = "https://fcm.googleapis.com/";
     public static final int PICK_IMAGE_REQUEST = 9999;
+    private String CurrentFixerID = "";
 
     public static IFCMService getFCMService(){
         return FCMClient.getClient(fcmUrl).create(IFCMService.class);
     }
 
-    public static void sendRequestToFixer(String fixerid , final IFCMService ifcmService , final Context context, final Location currentLocation) {
-        final DatabaseReference token = FirebaseDatabase.getInstance().getReference(Common.token_tbl);
+    public static void sendRequestToFixer(final String fixerid , final IFCMService ifcmService , final Context context, final Location currentLocation) {
+        final DatabaseReference token_tbl = FirebaseDatabase.getInstance().getReference(Common.token_tbl);
         final DatabaseReference customerInfo = FirebaseDatabase.getInstance().getReference(Common.customer_tbl);
-        token.orderByKey().equalTo(fixerid).addListenerForSingleValueEvent(new ValueEventListener() {
+        token_tbl.orderByKey().equalTo(fixerid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 for (DataSnapshot postSnapshot:dataSnapshot.getChildren()){
@@ -73,6 +74,7 @@ public class Common {
                                 Map<String, String> content = new HashMap<>();
                                 content.put("customer", customer_token);
                                 content.put("customerid", account.getId());
+
                                 content.put("lat", String.valueOf(currentLocation.getLatitude()));
                                 content.put("lng", String.valueOf(currentLocation.getLongitude()));
                                 content.put("service", service_want_to_fix);
@@ -80,8 +82,11 @@ public class Common {
                                 ifcmService.sendMessage(dataMessage).enqueue(new Callback<FCMResponse>() {
                                     @Override
                                     public void onResponse(Call<FCMResponse> call , Response<FCMResponse> response) {
-                                        if (response.body().success == 1)
-                                            Toast.makeText(context , "Đã gửi yêu cầu" , Toast.LENGTH_SHORT).show();
+                                        if (response.body().success == 1) {
+
+
+                                            Toast.makeText(context, "Đã gửi yêu cầu", Toast.LENGTH_SHORT).show();
+                                        }
                                         else
                                             Toast.makeText(context , "Gửi yêu cầu thất bại" , Toast.LENGTH_SHORT).show();
                                     }
@@ -142,5 +147,10 @@ public class Common {
 
             }
         });
+    }
+
+    public static void RemoveRequest(String FixerID){
+        DatabaseReference request_tbl = FirebaseDatabase.getInstance().getReference(Common.fix_request_tbl);
+        request_tbl.child(FixerID).removeValue();
     }
 }

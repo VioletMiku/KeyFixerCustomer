@@ -101,6 +101,8 @@ public class CallFixer extends AppCompatActivity implements View.OnClickListener
     public boolean onKeyDown(int keyCode , KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK){
             Common.isExitFromCallFixerUI = true;
+            Common.isFixerFound = false;
+            Common.isFixDone = true;
             Intent intent = new Intent(CallFixer.this, HomeActivity.class);
             startActivity(intent);
         }
@@ -111,8 +113,9 @@ public class CallFixer extends AppCompatActivity implements View.OnClickListener
     public void onClick(View v) {
         switch (v.getId()){
             case R.id.btn_CallFixerbyapp:
-                if (fixerId != null && !fixerId.isEmpty())
+                if (fixerId != null && !TextUtils.isEmpty(fixerId))
                     Common.sendRequestToFixer(fixerId, ifcmService, this, mLastlocation);
+                Log.e("info", "" + fixerId + ", " + mLastlocation);
                 break;
             case R.id.btn_CallFixerbyPhonenumber:
                 Intent intent = new Intent(Intent.ACTION_CALL);
@@ -123,7 +126,10 @@ public class CallFixer extends AppCompatActivity implements View.OnClickListener
                 Intent intentHome = new Intent(CallFixer.this, HomeActivity.class);
                 if (fixerId != null && !TextUtils.isEmpty(fixerId))
                     Common.sendCancelToFixer(fixerId, ifcmService, this);
+                Common.RemoveRequest(fixerId);
                 Common.isFixDone = true;
+                //set lại false để khi nhấn tìm thợ sửa khóa, nó sẽ không auto gọi activity CallFixer
+                Common.isFixerFound = false;
                 startActivity(intentHome);
                 break;
         }

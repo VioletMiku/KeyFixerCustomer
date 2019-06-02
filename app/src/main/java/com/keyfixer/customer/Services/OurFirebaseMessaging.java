@@ -32,6 +32,7 @@ public class OurFirebaseMessaging extends FirebaseMessagingService {
             final String message = data.get("message");
 
             try{
+                Log.e("title", "" + title);
                 if (title.equals("Thông báo!")){
                     Handler handler = new Handler(Looper.getMainLooper());
                     handler.post(new Runnable() {
@@ -40,6 +41,7 @@ public class OurFirebaseMessaging extends FirebaseMessagingService {
                             Toast.makeText(OurFirebaseMessaging.this, message, Toast.LENGTH_SHORT).show();
                         }
                     });
+                    showCancelNotification(message);
                     Common.isFixDone = true;
                     GoesToHome();
                 } else if (title.equals("Đã đến")){
@@ -48,6 +50,7 @@ public class OurFirebaseMessaging extends FirebaseMessagingService {
                     openRateActivity(message);
                 }
             }catch (Exception ex){
+                ex.printStackTrace();
                 Log.e("Warning","Something wrong");
                 Log.e("Exception", "" + ex.getCause());
             }
@@ -62,6 +65,9 @@ public class OurFirebaseMessaging extends FirebaseMessagingService {
 
     private void GoesToHome() {
         Intent intent = new Intent(this, HomeActivity.class);
+        Common.isFixDone = true;
+        //set lại false để khi nhấn tìm thợ sửa khóa, nó sẽ không auto gọi activity CallFixer
+        Common.isFixerFound = false;
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
     }
@@ -74,6 +80,20 @@ public class OurFirebaseMessaging extends FirebaseMessagingService {
                 .setWhen(System.currentTimeMillis())
                 .setSmallIcon(R.mipmap.ic_launcher_round)
                 .setContentTitle("Đã đến")
+                .setContentText(body)
+                .setContentIntent(contentIntent);
+        NotificationManager manager = (NotificationManager)getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        manager.notify(1, builder.build());
+    }
+
+    private void showCancelNotification(String body) {
+        PendingIntent contentIntent = PendingIntent.getActivity(getBaseContext(), 0, new Intent(),
+                PendingIntent.FLAG_ONE_SHOT);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(getBaseContext());
+        builder.setAutoCancel(true).setDefaults(Notification.DEFAULT_LIGHTS|Notification.DEFAULT_SOUND)
+                .setWhen(System.currentTimeMillis())
+                .setSmallIcon(R.mipmap.ic_launcher_round)
+                .setContentTitle("Đã hủy")
                 .setContentText(body)
                 .setContentIntent(contentIntent);
         NotificationManager manager = (NotificationManager)getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);

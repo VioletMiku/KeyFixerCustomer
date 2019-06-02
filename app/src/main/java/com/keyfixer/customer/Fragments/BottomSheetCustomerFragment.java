@@ -38,21 +38,26 @@ public class BottomSheetCustomerFragment extends BottomSheetDialogFragment {
         final ImageView img_fix_home_service = view.findViewById(R.id.fix_home_service);
         final ImageView img_fix_car_service = view.findViewById(R.id.fix_car_service);
         final ImageView img_fix_motorbike_service = view.findViewById(R.id.fix_motorbike_service);
-
         if (Common.service_want_to_fix == "S ử a   k h ó a   n h à"){
+            modalBottomSheet.onImageViewCLicked(true, false, false);
             img_fix_home_service.setImageResource(R.drawable.icons8_real_estate_96_chose);
             img_fix_car_service.setImageResource(R.drawable.icons8_car_rental_96);
             img_fix_motorbike_service.setImageResource(R.drawable.icons8_motorcycle_96);
+            Common.service_want_to_fix = "S ử a   k h ó a   n h à";
         }
         if (Common.service_want_to_fix == "S ử a   k h ó a   x e   h ơ i"){
+            modalBottomSheet.onImageViewCLicked(false, true, false);
             img_fix_home_service.setImageResource(R.drawable.icons8_real_estate_96);
             img_fix_car_service.setImageResource(R.drawable.icons8_car_rental_96_chose);
             img_fix_motorbike_service.setImageResource(R.drawable.icons8_motorcycle_96);
+            Common.service_want_to_fix = "S ử a   k h ó a   x e   h ơ i";
         }
         if (Common.service_want_to_fix == "S ử a   k h ó a   x e   g ắ n   m á y"){
+            modalBottomSheet.onImageViewCLicked(false, false, true);
             img_fix_home_service.setImageResource(R.drawable.icons8_real_estate_96);
             img_fix_car_service.setImageResource(R.drawable.icons8_car_rental_96);
             img_fix_motorbike_service.setImageResource(R.drawable.icons8_motorcycle_96_chose);
+            Common.service_want_to_fix = "S ử a   k h ó a   x e   g ắ n   m á y";
         }
 
         img_fix_home_service.setOnClickListener(new View.OnClickListener() {

@@ -75,6 +75,7 @@ public class RateActivity extends AppCompatActivity implements View.OnClickListe
                 Intent intent = new Intent(RateActivity.this, HomeActivity.class);
                 startActivity(intent);
                 Common.isFixDone = true;
+                Common.isFixerFound = false;
                 break;
             case R.id.btn_postcomment:
                 SubmitRateDetail(Common.fixerid);
